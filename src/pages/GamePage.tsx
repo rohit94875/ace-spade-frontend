@@ -11,6 +11,9 @@ import OpponentHands from '../components/OpponentHands';
 import ScorePanel from '../components/ScorePanel';
 import BidModal from '../components/BidModal';
 import RoundSummary from '../components/RoundSummary';
+import PresenceBar from '../components/PresenceBar';
+import ChatPanel from '../components/ChatPanel';
+import ActivityFeed from '../components/ActivityFeed';
 
 export default function GamePage() {
   const navigate = useNavigate();
@@ -20,7 +23,9 @@ export default function GamePage() {
     currentTurnPlayerId, hostPlayerId,
     roundHistory, lastTrick, roundSummary, errorMessage,
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
-    handleGameEvent, setHand, dismissRoundSummary, clearError, reset,
+    presence, graceSeconds, chatMessages, activityFeed, turnAlert,
+    handleGameEvent, setHand, dismissRoundSummary, clearError, clearTurnAlert, reset,
+    applySnapshot,
   } = useGameStore();
 
   const [showBidModal, setShowBidModal] = useState(false);
@@ -36,6 +41,18 @@ export default function GamePage() {
     }
   }, [phase, isMyTurn, paused]);
 
+  // Highlight your turn in the activity feed banner
+  useEffect(() => {
+    if (paused) return;
+    if (phase === 'BIDDING' && isMyTurn) {
+      useGameStore.setState({ turnAlert: 'Your turn to bid!' });
+    } else if (phase === 'PLAYING' && isMyTurn) {
+      useGameStore.setState({ turnAlert: 'Your turn to play!' });
+    } else if (!isMyTurn) {
+      clearTurnAlert();
+    }
+  }, [phase, isMyTurn, paused, clearTurnAlert]);
+
   // Load room state (players, bot, lobby phase)
   useEffect(() => {
     if (!roomCode) return;
@@ -50,6 +67,8 @@ export default function GamePage() {
           round: room.round,
           playWithBot: room.playWithBot ?? false,
           paused: room.paused ?? false,
+          presence: room.presence ?? {},
+          chatMessages: room.chatMessages ?? [],
         });
       })
       .catch(() => {});
@@ -65,6 +84,7 @@ export default function GamePage() {
       handleGameEvent,
       (update) => setHand(update.hand),
       (errEvent) => handleGameEvent(errEvent),
+      (snapshot) => applySnapshot(snapshot),
       () => setWsConnected(true),
     );
 
@@ -162,6 +182,13 @@ export default function GamePage() {
         </div>
       </div>
 
+      <PresenceBar
+        players={players}
+        presence={presence}
+        myPlayerId={playerId}
+        graceSeconds={graceSeconds}
+      />
+
       {/* Main layout */}
       <div style={styles.layout}>
         {/* Left: opponents + trick area */}
@@ -238,8 +265,24 @@ export default function GamePage() {
             phase={phase}
             roundHistory={roundHistory}
           />
+          {phase !== 'LOBBY' && (
+            <div style={{ marginTop: 12 }}>
+              <ChatPanel
+                roomCode={roomCode}
+                messages={chatMessages}
+                myPlayerId={playerId}
+                disabled={phase === 'GAME_END' || paused}
+              />
+            </div>
+          )}
         </div>
       </div>
+
+      <ActivityFeed
+        items={activityFeed}
+        turnAlert={turnAlert}
+        onDismissTurn={clearTurnAlert}
+      />
 
       {/* Modals */}
       {showBidModal && phase === 'BIDDING' && isMyTurn && (
@@ -315,6 +358,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 0,
+    paddingBottom: 200,
   },
   header: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -1,10 +1,11 @@
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { GameEvent, HandUpdate } from '../types/game';
+import { GameEvent, HandUpdate, SessionResumeResponse } from '../types/game';
 
 type EventCallback = (event: GameEvent) => void;
 type HandCallback = (update: HandUpdate) => void;
 type ErrorCallback = (msg: GameEvent) => void;
+type SnapshotCallback = (snapshot: SessionResumeResponse) => void;
 
 let stompClient: Client | null = null;
 
@@ -14,6 +15,7 @@ export function connect(
   onEvent: EventCallback,
   onHand: HandCallback,
   onError: ErrorCallback,
+  onSnapshot: SnapshotCallback,
   onConnected?: () => void,
 ) {
   // BASE_URL is '/' in dev, '/acespade/' in production — strip trailing slash for URL concat.
@@ -32,6 +34,9 @@ export function connect(
       });
       stompClient!.subscribe('/user/queue/errors', (msg: IMessage) => {
         onError(JSON.parse(msg.body) as GameEvent);
+      });
+      stompClient!.subscribe('/user/queue/snapshot', (msg: IMessage) => {
+        onSnapshot(JSON.parse(msg.body) as SessionResumeResponse);
       });
       onConnected?.();
     },
@@ -52,6 +57,13 @@ export function sendPause(roomCode: string) {
 
 export function sendResume(roomCode: string) {
   stompClient?.publish({ destination: `/app/game/${roomCode}/resume`, body: '{}' });
+}
+
+export function sendChat(roomCode: string, text: string) {
+  stompClient?.publish({
+    destination: `/app/game/${roomCode}/chat`,
+    body: JSON.stringify({ text }),
+  });
 }
 
 export function disconnect() {

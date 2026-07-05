@@ -30,12 +30,58 @@ export interface PlayerDto {
   currentTurn: boolean;
   host: boolean;
   bot?: boolean;
+  connected?: boolean;
+  graceExpiresAt?: number | null;
+  lastSeenAt?: number;
+  presenceStatus?: string;
+}
+
+export type PresenceStatus = 'ONLINE' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
+
+export interface PlayerPresenceDto {
+  playerId: string;
+  username: string;
+  connected: boolean;
+  bot: boolean;
+  graceExpiresAt?: number | null;
+  lastSeenAt: number;
+  status: PresenceStatus;
+}
+
+export interface ChatMessageDto {
+  id: string;
+  playerId: string;
+  username: string;
+  text: string;
+  sentAt: number;
+}
+
+export interface SessionResumeResponse {
+  valid: boolean;
+  playerId?: string;
+  username?: string;
+  host?: boolean;
+  roomCode?: string;
+  room?: RoomStateDto;
+  hand?: Card[];
+  currentTrick?: TrickCard[];
+  chatMessages?: ChatMessageDto[];
+  presence?: Record<string, PlayerPresenceDto>;
+  message?: string;
+}
+
+export interface ActivityItem {
+  id: string;
+  text: string;
+  ts: number;
+  highlight?: boolean;
 }
 
 export type EventType =
   | 'ROOM_UPDATED' | 'ROUND_STARTED' | 'BID_PHASE' | 'BID_PLACED'
   | 'PLAY_PHASE' | 'CARD_PLAYED' | 'TRICK_ENDED' | 'ROUND_ENDED'
-  | 'GAME_ENDED' | 'PLAYER_LEFT' | 'BOT_TAKEOVER' | 'GAME_PAUSED' | 'GAME_RESUMED' | 'ERROR';
+  | 'GAME_ENDED' | 'PLAYER_LEFT' | 'BOT_TAKEOVER' | 'GAME_PAUSED' | 'GAME_RESUMED'
+  | 'GAME_SNAPSHOT' | 'PRESENCE_UPDATED' | 'CHAT_MESSAGE' | 'ERROR';
 
 export interface GameEvent {
   type: EventType;
@@ -54,6 +100,8 @@ export interface RoomStateDto {
   disconnectPolicy?: DisconnectPolicy;
   paused?: boolean;
   pausedByPlayerId?: string | null;
+  chatMessages?: ChatMessageDto[];
+  presence?: Record<string, PlayerPresenceDto>;
 }
 
 export interface HandUpdate {
