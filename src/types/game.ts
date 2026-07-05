@@ -70,13 +70,6 @@ export interface SessionResumeResponse {
   message?: string;
 }
 
-export interface ActivityItem {
-  id: string;
-  text: string;
-  ts: number;
-  highlight?: boolean;
-}
-
 export type EventType =
   | 'ROOM_UPDATED' | 'ROUND_STARTED' | 'BID_PHASE' | 'BID_PLACED'
   | 'PLAY_PHASE' | 'CARD_PLAYED' | 'TRICK_ENDED' | 'ROUND_ENDED'

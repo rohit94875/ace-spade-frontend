@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import {
   Card, GamePhase, PlayerDto, RoomStateDto, TrickCard,
   TrickEndedPayload, RoundEndedPayload, GameEvent,
-  ChatMessageDto, PlayerPresenceDto, SessionResumeResponse, ActivityItem,
+  ChatMessageDto, PlayerPresenceDto, SessionResumeResponse,
 } from '../types/game';
 import { saveSession, clearSession, StoredSession } from '../services/sessionStorage';
 
@@ -58,7 +58,6 @@ interface GameStore {
   presence: Record<string, PlayerPresenceDto>;
   graceSeconds: number;
   chatMessages: ChatMessageDto[];
-  activityFeed: ActivityItem[];
   turnAlert: string | null;
 
   setSession: (data: {
@@ -81,8 +80,6 @@ interface GameStore {
   clearTurnAlert: () => void;
   reset: () => void;
 }
-
-const MAX_ACTIVITY = 40;
 
 const initialState = {
   playerId: null as string | null,
@@ -110,23 +107,8 @@ const initialState = {
   presence: {} as Record<string, PlayerPresenceDto>,
   graceSeconds: 120,
   chatMessages: [] as ChatMessageDto[],
-  activityFeed: [] as ActivityItem[],
   turnAlert: null as string | null,
 };
-
-function pushActivity(
-  feed: ActivityItem[],
-  text: string,
-  highlight = false,
-): ActivityItem[] {
-  const item: ActivityItem = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    text,
-    ts: Date.now(),
-    highlight,
-  };
-  return [item, ...feed].slice(0, MAX_ACTIVITY);
-}
 
 function applyRoomState(
   room: RoomStateDto,
@@ -182,7 +164,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hand: res.hand ?? [],
       currentTrick: res.currentTrick ?? [],
       ...applyRoomState(room),
-      activityFeed: pushActivity([], 'Rejoined the game — you are still in your seat', true),
     });
   },
 
@@ -193,7 +174,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hand: res.hand ?? s.hand,
       currentTrick: res.currentTrick ?? s.currentTrick,
       ...applyRoomState(res.room),
-      activityFeed: pushActivity(s.activityFeed, 'Game state synced', false),
     });
   },
 
@@ -236,7 +216,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
           roundSummary: null,
           paused: false,
           pausedAuto: false,
-          activityFeed: pushActivity(s.activityFeed, `Round ${payload['round']} started — place your bids`),
         });
         break;
       }
@@ -244,19 +223,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       case 'BID_PLACED': {
         const nextTurn = payload['nextTurnPlayerId'] as string;
         const phase = payload['phase'] as GamePhase;
-        const bidder = payload['username'] as string;
-        const amount = payload['amount'] as number;
         const isMyTurnNext = nextTurn === s.playerId;
         set({
           phase,
           currentTurnPlayerId: nextTurn,
           players: s.players.map((p) =>
-            p.id === payload['playerId'] ? { ...p, bid: amount } : p,
-          ),
-          activityFeed: pushActivity(
-            s.activityFeed,
-            `${bidder} bid ${amount}`,
-            isMyTurnNext,
+            p.id === payload['playerId'] ? { ...p, bid: payload['amount'] as number } : p,
           ),
           turnAlert: isMyTurnNext && phase === 'BIDDING'
             ? 'Your turn to bid!'
@@ -274,9 +246,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
           currentTurnPlayerId: turnId,
           phase: 'PLAYING',
           turnAlert: isMyTurn ? 'Your turn to play!' : s.turnAlert,
-          activityFeed: isMyTurn
-            ? pushActivity(s.activityFeed, 'Your turn to play!', true)
-            : s.activityFeed,
         });
         break;
       }
@@ -303,7 +272,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
               ? { ...p, cardCount: Math.max(0, p.cardCount - 1) }
               : p,
           ),
-          activityFeed: pushActivity(s.activityFeed, `${playedName} played a card`),
         });
         break;
       }
@@ -317,11 +285,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
             ...pl,
             tricksWon: p.trickCounts[pl.id] ?? pl.tricksWon,
           })),
-          activityFeed: pushActivity(
-            s.activityFeed,
-            `${p.winnerUsername} won the trick`,
-            p.winnerId === s.playerId,
-          ),
         });
         break;
       }
@@ -354,11 +317,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
           paused: false,
           pausedAuto: false,
           turnAlert: null,
-          activityFeed: pushActivity(
-            s.activityFeed,
-            r.gameOver ? `Game over — ${r.winnerUsername} wins!` : `Round ${r.round} complete`,
-            true,
-          ),
         });
         break;
       }
@@ -366,7 +324,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       case 'PLAYER_LEFT':
         set({
           players: (payload['players'] as PlayerDto[]) ?? [],
-          activityFeed: pushActivity(s.activityFeed, 'A player left the room'),
         });
         break;
 
@@ -374,10 +331,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         set({
           players: (payload['players'] as PlayerDto[]) ?? [],
           errorMessage: `${payload['botUsername'] ?? 'BOT Vitality'} took over the seat`,
-          activityFeed: pushActivity(
-            s.activityFeed,
-            `${payload['botUsername'] ?? 'BOT'} took over a seat`,
-          ),
         });
         break;
 
@@ -385,13 +338,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         set({
           paused: true,
           pausedAuto: Boolean(payload['auto']),
-          activityFeed: pushActivity(
-            s.activityFeed,
-            Boolean(payload['auto'])
-              ? `${payload['pausedByUsername'] ?? 'Player'} disconnected — game paused`
-              : 'Game paused',
-            true,
-          ),
         });
         break;
 
@@ -399,29 +345,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         set({
           paused: false,
           pausedAuto: false,
-          activityFeed: pushActivity(s.activityFeed, 'Game resumed'),
         });
         break;
 
       case 'PRESENCE_UPDATED': {
         const presence = (payload['presence'] as Record<string, PlayerPresenceDto>) ?? {};
         const graceSeconds = (payload['graceSeconds'] as number) ?? s.graceSeconds;
-        let activityFeed = s.activityFeed;
-        Object.values(presence).forEach((pr) => {
-          const prev = s.presence[pr.playerId];
-          if (pr.playerId === s.playerId) return;
-          if (pr.status === 'GRACE' && prev?.status !== 'GRACE') {
-            activityFeed = pushActivity(
-              activityFeed,
-              `${pr.username} disconnected — rejoin within ${graceSeconds}s`,
-              true,
-            );
-          } else if (pr.status === 'ONLINE' && prev && prev.status !== 'ONLINE') {
-            activityFeed = pushActivity(activityFeed, `${pr.username} reconnected`);
-          } else if (pr.status === 'PAUSED' && prev?.status !== 'PAUSED') {
-            activityFeed = pushActivity(activityFeed, `${pr.username} paused the game`, true);
-          }
-        });
         set({
           presence,
           graceSeconds,
@@ -435,7 +364,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
               presenceStatus: pr.status,
             };
           }),
-          activityFeed,
         });
         break;
       }
@@ -444,7 +372,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const msg = payload as unknown as ChatMessageDto;
         set({
           chatMessages: [...s.chatMessages, msg].slice(-100),
-          activityFeed: pushActivity(s.activityFeed, `${msg.username}: ${msg.text}`),
         });
         break;
       }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card } from '../types/game';
+import { Card, PlayerDto } from '../types/game';
 import { sendBid } from '../services/websocket';
 import CardComponent from './CardComponent';
 
@@ -8,11 +8,14 @@ interface Props {
   round: number;
   roomCode: string;
   hand: Card[];
+  players: PlayerDto[];
+  myPlayerId: string;
   onBid?: () => void;
 }
 
-export default function BidModal({ round, roomCode, hand, onBid }: Props) {
+export default function BidModal({ round, roomCode, hand, players, myPlayerId, onBid }: Props) {
   const [bid, setBid] = useState(0);
+  const otherBids = players.filter((p) => p.id !== myPlayerId && p.bid !== null);
 
   function handleBid() {
     sendBid(roomCode, bid);
@@ -33,6 +36,28 @@ export default function BidModal({ round, roomCode, hand, onBid }: Props) {
       >
         <h2 style={styles.title}>Place Your Bid</h2>
         <p style={styles.sub}>Round {round} — How many tricks will you win? (0–{round})</p>
+
+        <div style={styles.bidsSection}>
+          <p style={styles.bidsLabel}>Bids so far</p>
+          {otherBids.length === 0 ? (
+            <p style={styles.bidsEmpty}>No one has bid yet — you&apos;re first.</p>
+          ) : (
+            <div style={styles.bidsList}>
+              {otherBids.map((p) => (
+                <div key={p.id} style={styles.bidRow}>
+                  <span style={styles.bidName}>
+                    {p.host && '👑 '}
+                    {p.bot && '🤖 '}
+                    {p.username}
+                  </span>
+                  <span style={styles.bidAmount}>
+                    {p.bid} trick{p.bid !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Show player's hand so they can decide their bid */}
         {hand.length > 0 && (
@@ -99,6 +124,52 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%', maxWidth: 680,
     display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center',
     boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+  },
+  bidsSection: {
+    width: '100%',
+    background: 'rgba(0,0,0,0.2)',
+    borderRadius: 12,
+    padding: '12px 16px',
+    border: '1px solid rgba(255,255,255,0.08)',
+  },
+  bidsLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 12,
+    fontWeight: 700,
+    margin: '0 0 8px',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  bidsEmpty: {
+    margin: 0,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.45)',
+    fontStyle: 'italic',
+  },
+  bidsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  bidRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: '6px 10px',
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.06)',
+  },
+  bidName: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    fontWeight: 600,
+  },
+  bidAmount: {
+    color: '#74c69d',
+    fontSize: 14,
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
   },
   handSection: {
     width: '100%', background: 'rgba(0,0,0,0.25)',

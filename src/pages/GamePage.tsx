@@ -23,7 +23,7 @@ export default function GamePage() {
     currentTurnPlayerId, hostPlayerId,
     roundHistory, lastTrick, roundSummary, errorMessage,
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
-    presence, graceSeconds, chatMessages, activityFeed, turnAlert,
+    presence, graceSeconds, chatMessages, turnAlert,
     handleGameEvent, setHand, dismissRoundSummary, clearError, clearTurnAlert, reset,
     applySnapshot,
   } = useGameStore();
@@ -41,7 +41,7 @@ export default function GamePage() {
     }
   }, [phase, isMyTurn, paused]);
 
-  // Highlight your turn in the activity feed banner
+  // Turn banner when it's your turn
   useEffect(() => {
     if (paused) return;
     if (phase === 'BIDDING' && isMyTurn) {
@@ -279,7 +279,6 @@ export default function GamePage() {
       </div>
 
       <ActivityFeed
-        items={activityFeed}
         turnAlert={turnAlert}
         onDismissTurn={clearTurnAlert}
       />
@@ -290,6 +289,8 @@ export default function GamePage() {
           round={round}
           roomCode={roomCode}
           hand={hand}
+          players={players}
+          myPlayerId={playerId}
           onBid={() => setShowBidModal(false)}
         />
       )}
@@ -358,7 +359,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 0,
-    paddingBottom: 200,
+    paddingBottom: 80,
   },
   header: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
