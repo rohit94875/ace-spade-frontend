@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Lobby Revamp Preview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #111;
+      color: #f0f0f0;
+      min-height: 100vh;
+    }
+
+    .preview-shell {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .preview-meta {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(17, 17, 17, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 16px;
+      margin: -16px -16px 16px;
+    }
+
+    .preview-meta h1 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #a1a1aa;
+    }
+
+    .preview-meta p {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: #71717a;
+      line-height: 1.4;
+    }
+
+    .preview-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+      color: #e4e4e7;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .ctrl-btn.active {
+      background: rgba(116, 198, 157, 0.2);
+      border-color: rgba(116, 198, 157, 0.5);
+      color: #74c69d;
+    }
+
+    .phone-frame {
+      margin: 0 auto;
+      background: #000;
+      border-radius: 28px;
+      padding: 10px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      border: 2px solid #333;
+      max-width: 390px;
+    }
+
+    .phone-screen {
+      border-radius: 20px;
+      overflow: hidden;
+      min-height: 720px;
+      background: linear-gradient(135deg, #1a4a2e 0%, #0d2b1a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+    }
+
+    .label-tag {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      width: fit-content;
+    }
+
+    .label-tag.bad { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+    .label-tag.good { background: rgba(116, 198, 157, 0.2); color: #74c69d; }
+
+    .lobby-card {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 28px 22px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .lobby-card.compact {
+      padding: 24px 20px;
+    }
+
+    .title-block {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .title-block .icon { font-size: 44px; line-height: 1; }
+    .title-block h2 {
+      margin: 8px 0 4px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .title-block p {
+      margin: 0;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    .input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+
+    .input.code {
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      text-align: center;
+      font-family: monospace;
+      font-weight: 700;
+    }
+
+    /* ── OLD layout ── */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 0;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #2d6a4f;
+      color: #fff;
+    }
+
+    .btn-quick {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 2px solid rgba(241, 196, 15, 0.45);
+      background: linear-gradient(135deg, rgba(241, 196, 15, 0.25), rgba(230, 126, 34, 0.2));
+      color: #f1c40f;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+
+    .hint {
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+      margin: 0 0 14px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0 14px;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .divider-text {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.35);
+      white-space: nowrap;
+    }
+
+    .options-box {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .options-box label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+
+    .options-box .opt-label {
+      font-weight: 600;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.55);
+      margin: 8px 0 6px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #2d6a4f, #1b4332);
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .rules {
+      margin-top: 20px;
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+    }
+
+    .rules h4 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    .rules ul {
+      margin: 0;
+      padding-left: 16px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 1.7;
+    }
+
+    /* ── NEW: mode switch + separate panels ── */
+    .mode-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 16px;
+      padding: 4px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+    }
+
+    .mode-btn {
+      padding: 10px 6px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn.active {
+      background: #2d6a4f;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    .mode-btn.solo.active {
+      background: linear-gradient(135deg, #c9a227, #a67c00);
+      color: #1a1a1a;
+    }
+
+    .mode-panel {
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .mode-panel.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin: 0 0 4px;
+      color: #fff;
+    }
+
+    .panel-desc {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      margin: 0 0 14px;
+      line-height: 1.4;
+    }
+
+    .action-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-hero {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, #f1c40f, #e67e22);
+      color: #1a1a1a;
+      font-weight: 800;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(241, 196, 15, 0.25);
+    }
+
+    .btn-hero sub {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      opacity: 0.7;
+      margin-top: 4px;
+    }
+
+    .input.code {
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      text-align: center;
+      font-family: monospace;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #2d6a4f, #1b4332);
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-primary.join {
+      background: linear-gradient(135deg, #2980b9, #1a5276);
+    }
+
+    .advanced-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .advanced-panel {
+      display: none;
+      margin-top: 8px;
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .advanced-panel.open { display: block; }
+
+    .advanced-panel label {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .rules-collapsed {
+      margin-top: 16px;
+      text-align: center;
+    }
+
+    .rules-collapsed button {
+      border: none;
+      background: none;
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .rules-drawer {
+      display: none;
+      margin-top: 12px;
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 1.6;
+    }
+
+    .rules-drawer.open { display: block; }
+
+    .hidden { display: none !important; }
+
+    .notes {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      font-size: 13px;
+      color: #a1a1aa;
+      line-height: 1.6;
+    }
+
+    .notes h3 {
+      margin: 0 0 8px;
+      color: #e4e4e7;
+      font-size: 14px;
+    }
+
+    .notes ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-shell">
+    <div class="preview-meta">
+      <h1>Lobby / Opening Page Revamp — Preview</h1>
+      <p>Three separate modes — Solo, Join, Create — each with its own screen. Toggle to compare.</p>
+      <div class="preview-controls">
+        <button class="ctrl-btn active" id="btnNew" type="button">Proposed</button>
+        <button class="ctrl-btn" id="btnOld" type="button">Current (too many options)</button>
+      </div>
+    </div>
+
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <!-- CURRENT -->
+        <div class="lobby-card" id="viewOld">
+          <span class="label-tag bad">Current</span>
+          <div class="title-block">
+            <div class="icon">♠</div>
+            <h2>Ace Spade</h2>
+            <p>Multiplayer Trick-Taking Card Game</p>
+          </div>
+
+          <div class="tabs">
+            <button class="tab active" type="button">Create Room</button>
+            <button class="tab" type="button">Join Room</button>
+          </div>
+
+          <input class="input" type="text" placeholder="Your username" value="Rohit" />
+
+          <button class="btn-quick" type="button">🤖 Play 1v1 vs BOT Vitality</button>
+          <p class="hint">Jump straight into a solo game — pause anytime</p>
+
+          <div class="divider">
+            <span class="divider-line"></span>
+            <span class="divider-text">or create / join a room</span>
+            <span class="divider-line"></span>
+          </div>
+
+          <div class="options-box">
+            <label>
+              <input type="checkbox" />
+              Play vs BOT Vitality (1v1 solo)
+            </label>
+            <p class="opt-label">If a player leaves mid-game:</p>
+            <label>
+              <input type="radio" name="old-policy" checked />
+              Forfeit — remaining player wins
+            </label>
+            <label>
+              <input type="radio" name="old-policy" />
+              Bot takeover — BOT Vitality plays their seat
+            </label>
+          </div>
+
+          <button class="btn-primary" type="button">Create Room</button>
+
+          <div class="rules">
+            <h4>Quick Rules</h4>
+            <ul>
+              <li>13 rounds — Round N deals N cards</li>
+              <li>Bid tricks before each round</li>
+              <li>Trump: ♠ &gt; ♣ &gt; ♥ &gt; ♦</li>
+              <li>2–8 players</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- PROPOSED -->
+        <div class="lobby-card compact hidden" id="viewNew">
+          <span class="label-tag good">Proposed</span>
+          <div class="title-block">
+            <div class="icon">♠</div>
+            <h2>Ace Spade</h2>
+            <p>Pick a name, then choose how to play</p>
+          </div>
+
+          <input class="input" type="text" placeholder="Your username" value="Rohit" />
+
+          <div class="mode-switch">
+            <button class="mode-btn solo active" type="button" data-mode="solo">Solo</button>
+            <button class="mode-btn" type="button" data-mode="join">Join</button>
+            <button class="mode-btn" type="button" data-mode="create">Create</button>
+          </div>
+
+          <!-- Solo: only bot play -->
+          <div class="mode-panel active" id="panelSolo">
+            <p class="panel-title">Play vs Bot</p>
+            <p class="panel-desc">Instant 1v1 against BOT Vitality. Pause anytime.</p>
+            <button class="btn-hero" type="button">
+              Start solo game
+              <sub>No room code needed</sub>
+            </button>
+          </div>
+
+          <!-- Join: only join fields -->
+          <div class="mode-panel" id="panelJoin">
+            <p class="panel-title">Join a room</p>
+            <p class="panel-desc">Enter the 6-character code shared by the host.</p>
+            <input class="input code" type="text" placeholder="AB12CD" maxlength="6" />
+            <button class="btn-primary join" type="button">Join room</button>
+          </div>
+
+          <!-- Create: only create fields -->
+          <div class="mode-panel" id="panelCreate">
+            <p class="panel-title">Create a room</p>
+            <p class="panel-desc">You'll get a code to share with friends (2–8 players).</p>
+            <button class="btn-primary" type="button">Create room</button>
+            <button class="advanced-toggle" id="advancedToggle" type="button" style="margin-top:12px">
+              <span id="advancedChevron">▸</span> Room options
+            </button>
+            <div class="advanced-panel" id="advancedPanel">
+              <label>
+                <input type="checkbox" />
+                Add BOT Vitality to fill an empty seat
+              </label>
+              <p class="opt-label" style="margin:8px 0 6px;font-size:11px;color:rgba(255,255,255,0.5)">If someone leaves:</p>
+              <label>
+                <input type="radio" name="new-policy" checked />
+                Other player wins
+              </label>
+              <label>
+                <input type="radio" name="new-policy" />
+                Bot takes over their seat
+              </label>
+            </div>
+          </div>
+
+          <div class="rules-collapsed">
+            <button type="button" id="rulesToggle">How to play</button>
+            <div class="rules-drawer" id="rulesDrawer">
+              13 rounds · bid tricks · trump order ♠♣♥♦ · 2–8 players.
+              Hit your bid for max score.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Separated flows</h3>
+      <ul>
+        <li><strong>3 modes</strong> — Solo · Join · Create as a segmented switch; only one panel visible at a time.</li>
+        <li><strong>Solo</strong> — username + start bot game. No room code, no create/join clutter.</li>
+        <li><strong>Join</strong> — username + room code + Join button only. Nothing about creating or bot options.</li>
+        <li><strong>Create</strong> — username + Create button. Room options (bot seat, leave policy) collapsed under “Room options”.</li>
+        <li><strong>Shared username</strong> — entered once at top, applies to whichever mode you pick.</li>
+        <li><strong>Rules</strong> — still collapsed behind “How to play”.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const viewOld = document.getElementById('viewOld');
+    const viewNew = document.getElementById('viewNew');
+    const btnNew = document.getElementById('btnNew');
+    const btnOld = document.getElementById('btnOld');
+    const advancedToggle = document.getElementById('advancedToggle');
+    const advancedPanel = document.getElementById('advancedPanel');
+    const advancedChevron = document.getElementById('advancedChevron');
+    const rulesToggle = document.getElementById('rulesToggle');
+    const rulesDrawer = document.getElementById('rulesDrawer');
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    const panels = {
+      solo: document.getElementById('panelSolo'),
+      join: document.getElementById('panelJoin'),
+      create: document.getElementById('panelCreate'),
+    };
+
+    function setDesign(d) {
+      viewOld.classList.toggle('hidden', d !== 'old');
+      viewNew.classList.toggle('hidden', d !== 'new');
+      btnNew.classList.toggle('active', d === 'new');
+      btnOld.classList.toggle('active', d === 'old');
+    }
+
+    function setMode(mode) {
+      modeBtns.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+      Object.entries(panels).forEach(([key, panel]) => {
+        panel?.classList.toggle('active', key === mode);
+      });
+    }
+
+    btnNew.addEventListener('click', () => setDesign('new'));
+    btnOld.addEventListener('click', () => setDesign('old'));
+
+    modeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    });
+
+    advancedToggle?.addEventListener('click', () => {
+      const open = advancedPanel.classList.toggle('open');
+      advancedChevron.textContent = open ? '▾' : '▸';
+    });
+
+    rulesToggle.addEventListener('click', () => {
+      rulesDrawer.classList.toggle('open');
+    });
+
+    setDesign('new');
+    setMode('solo');
+  </script>
+</body>
+</html>
