@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
-import { connect, disconnect, sendLeave, sendPause, sendResume, sendStart } from '../services/websocket';
+import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart } from '../services/websocket';
 import { getRoom } from '../services/api';
 import type { RoomStateDto } from '../types/game';
 import PlayerHand from '../components/PlayerHand';
@@ -89,9 +89,10 @@ export default function GamePage() {
       (errEvent) => handleGameEvent(errEvent),
       (snapshot) => applySnapshot(snapshot),
       () => setWsConnected(true),
+      () => setWsConnected(false),
     );
 
-    return () => disconnect();
+    return () => scheduleDisconnect();
   }, [roomCode, sessionToken]);
 
   // Quick 1v1: auto-start as soon as WebSocket is connected
