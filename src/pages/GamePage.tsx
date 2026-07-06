@@ -21,7 +21,7 @@ export default function GamePage() {
   const navigate = useNavigate();
   const {
     playerId, sessionToken, roomCode, username, isHost,
-    phase, round, players, hand, currentTrick, scores,
+    phase, round, maxRounds, players, hand, currentTrick, scores,
     currentTurnPlayerId, hostPlayerId,
     roundHistory, lastTrick, roundSummary, errorMessage,
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
@@ -68,6 +68,7 @@ export default function GamePage() {
           currentTurnPlayerId: room.currentTurnPlayerId,
           hostPlayerId: room.hostPlayerId,
           round: room.round,
+          maxRounds: room.maxRounds === 10 ? 10 : 13,
           playWithBot: room.playWithBot ?? false,
           paused: room.paused ?? false,
           presence: room.presence ?? {},
@@ -139,6 +140,7 @@ export default function GamePage() {
       <GameHeader
         roomCode={roomCode}
         round={round}
+        maxRounds={maxRounds}
         username={username ?? ''}
         isHost={isHost}
         wsConnected={wsConnected}

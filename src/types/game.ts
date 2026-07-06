@@ -1,4 +1,5 @@
 export type DisconnectPolicy = 'FORFEIT_WIN' | 'BOT_TAKEOVER';
+export type MaxRounds = 10 | 13;
 
 export type Suit = 'SPADES' | 'CLUBS' | 'HEARTS' | 'DIAMONDS';
 export type Rank =
@@ -85,6 +86,7 @@ export interface RoomStateDto {
   roomCode: string;
   phase: GamePhase;
   round: number;
+  maxRounds?: MaxRounds;
   players: PlayerDto[];
   scores: Record<string, number>;
   currentTurnPlayerId: string;

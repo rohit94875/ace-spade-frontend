@@ -6,6 +6,7 @@ import GameMenu from './GameMenu';
 interface Props {
   roomCode: string;
   round: number;
+  maxRounds: number;
   username: string;
   isHost: boolean;
   wsConnected: boolean;
@@ -43,7 +44,7 @@ function buildStatus(props: Props): { text: string; highlight: boolean } {
 
 export default function GameHeader(props: Props) {
   const isMobile = useMediaQuery('(max-width: 640px)');
-  const { roomCode, round, username, isHost, canPause, onLeave, onPause } = props;
+  const { roomCode, round, maxRounds, username, isHost, canPause, onLeave, onPause } = props;
   const status = buildStatus(props);
 
   if (isMobile) {
@@ -54,7 +55,7 @@ export default function GameHeader(props: Props) {
             <span style={styles.icon}>♠</span>
             <div style={styles.brandText}>
               <span style={styles.title}>Ace Spade</span>
-              <span style={styles.subtitle}>#{roomCode}{phaseLabel(props.phase, round)}</span>
+              <span style={styles.subtitle}>#{roomCode}{phaseLabel(props.phase, round, maxRounds)}</span>
             </div>
           </div>
           <div style={styles.statusArea}>
@@ -82,7 +83,7 @@ export default function GameHeader(props: Props) {
       <div style={styles.headerLeft}>
         <span style={{ fontSize: 22 }}>♠</span>
         <span style={styles.gameName}>Ace Spade</span>
-        <span style={styles.roomCode}>#{roomCode}</span>
+        <span style={styles.roomCode}>#{roomCode}{phaseLabel(props.phase, round, maxRounds)}</span>
       </div>
       <div style={styles.headerCenter}>
         <span style={status.highlight ? styles.yourTurn : styles.waiting}>
@@ -105,9 +106,9 @@ export default function GameHeader(props: Props) {
   );
 }
 
-function phaseLabel(phase: GamePhase | null, round: number): string {
-  if (!phase || phase === 'LOBBY') return '';
-  return ` · R${round}`;
+function phaseLabel(phase: GamePhase | null, round: number, maxRounds: number): string {
+  if (!phase || phase === 'LOBBY') return ` · ${maxRounds}r`;
+  return ` · R${round}/${maxRounds}`;
 }
 
 const styles: Record<string, React.CSSProperties> = {

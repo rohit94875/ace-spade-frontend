@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { createRoom, joinRoom } from '../services/api';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
-import type { DisconnectPolicy } from '../types/game';
+import type { DisconnectPolicy, MaxRounds } from '../types/game';
 
 type LobbyMode = 'solo' | 'join' | 'create';
 
@@ -22,6 +22,7 @@ export default function LobbyPage() {
   const [playWithBot, setPlayWithBot] = useState(false);
   const [ranked, setRanked] = useState(false);
   const [disconnectPolicy, setDisconnectPolicy] = useState<DisconnectPolicy>('FORFEIT_WIN');
+  const [maxRounds, setMaxRounds] = useState<MaxRounds>(13);
   const [showRoomOptions, setShowRoomOptions] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
@@ -47,7 +48,7 @@ export default function LobbyPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await createRoom(username.trim(), true, 'FORFEIT_WIN');
+      const res = await createRoom(username.trim(), true, 'FORFEIT_WIN', false, maxRounds);
       setSession({ ...res, isHost: true, playWithBot: true, autoStartGame: true });
       navigate('/game');
     } catch (e: unknown) {
@@ -70,7 +71,7 @@ export default function LobbyPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await createRoom(username.trim(), playWithBot, disconnectPolicy, ranked);
+      const res = await createRoom(username.trim(), playWithBot, disconnectPolicy, ranked, maxRounds);
       setSession({ ...res, isHost: true, playWithBot, ranked });
       navigate('/game');
     } catch (e: unknown) {
@@ -166,6 +167,25 @@ export default function LobbyPage() {
           <div style={styles.panel}>
             <p style={styles.panelTitle}>Play vs Bot</p>
             <p style={styles.panelDesc}>Instant 1v1 against BOT Vitality. Pause anytime.</p>
+            <p style={styles.optionLabel}>Game length:</p>
+            <label style={styles.radioRow}>
+              <input
+                type="radio"
+                name="soloMaxRounds"
+                checked={maxRounds === 13}
+                onChange={() => setMaxRounds(13)}
+              />
+              <span>13 rounds (full game)</span>
+            </label>
+            <label style={styles.radioRow}>
+              <input
+                type="radio"
+                name="soloMaxRounds"
+                checked={maxRounds === 10}
+                onChange={() => setMaxRounds(10)}
+              />
+              <span>10 rounds (quick game)</span>
+            </label>
             <motion.button
               style={styles.heroBtn}
               whileHover={{ scale: 1.02 }}
@@ -227,6 +247,25 @@ export default function LobbyPage() {
 
             {showRoomOptions && (
               <div style={styles.optionsBox}>
+                <p style={styles.optionLabel}>Game length:</p>
+                <label style={styles.radioRow}>
+                  <input
+                    type="radio"
+                    name="createMaxRounds"
+                    checked={maxRounds === 13}
+                    onChange={() => setMaxRounds(13)}
+                  />
+                  <span>13 rounds (full game)</span>
+                </label>
+                <label style={styles.radioRow}>
+                  <input
+                    type="radio"
+                    name="createMaxRounds"
+                    checked={maxRounds === 10}
+                    onChange={() => setMaxRounds(10)}
+                  />
+                  <span>10 rounds (quick game)</span>
+                </label>
                 <label style={styles.checkRow}>
                   <input
                     type="checkbox"
@@ -276,7 +315,7 @@ export default function LobbyPage() {
           </button>
           {showRules && (
             <p style={styles.rulesText}>
-              13 rounds · bid tricks before each round · trump order ♠ &gt; ♣ &gt; ♥ &gt; ♦ ·
+              10 or 13 rounds · bid tricks before each round · trump order ♠ &gt; ♣ &gt; ♥ &gt; ♦ ·
               2–8 players. Hit your bid exactly for max score (bid 0 → 10pts, bid N → 10+N×11 pts).
             </p>
           )}
