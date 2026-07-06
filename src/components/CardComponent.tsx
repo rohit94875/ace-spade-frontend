@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion';
 import { Card, SUIT_SYMBOLS, RANK_DISPLAY, isRedSuit } from '../types/game';
+import { useDisplayStore } from '../store/displayStore';
+import { incognitoLabel } from '../utils/cardDisplay';
 
 interface Props {
   card: Card;
@@ -12,9 +14,37 @@ interface Props {
 }
 
 export default function CardComponent({ card, onClick, selectable, selected, disabled, faceDown, small }: Props) {
+  const incognitoMode = useDisplayStore((s) => s.incognitoMode);
   const red = isRedSuit(card.suit);
-  const size = small ? { width: 44, height: 60, fontSize: 13, symbolSize: 20 }
-                     : { width: 70, height: 95, fontSize: 16, symbolSize: 28 };
+  const size = small ? { width: 44, height: 60, fontSize: 13, symbolSize: 20, chipFont: 12 }
+                     : { width: 70, height: 95, fontSize: 16, symbolSize: 28, chipFont: 15 };
+
+  const isClickable = selectable && !disabled;
+
+  if (incognitoMode) {
+    const chipLabel = faceDown ? '?' : incognitoLabel(card);
+    return (
+      <motion.div
+        onClick={isClickable ? onClick : undefined}
+        style={{
+          ...styles.chip(size.width, size.height, size.chipFont),
+          cursor: isClickable ? 'pointer' : 'default',
+          border: selected ? '2px solid #a1a1aa' : '1px solid #3f3f46',
+          boxShadow: selected ? '0 0 12px rgba(161,161,170,0.45)' : '0 3px 10px rgba(0,0,0,0.4)',
+          transform: selected ? 'translateY(-10px)' : undefined,
+          opacity: disabled ? 0.35 : 1,
+          color: faceDown ? 'rgba(228,228,231,0.45)' : '#d4d4d8',
+        }}
+        whileHover={isClickable ? { y: -6 } : {}}
+        whileTap={isClickable ? { scale: 0.95 } : {}}
+        initial={{ opacity: disabled ? 0.35 : 0, scale: 0.9 }}
+        animate={{ opacity: disabled ? 0.35 : 1, scale: 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        {chipLabel}
+      </motion.div>
+    );
+  }
 
   if (faceDown) {
     return (
@@ -23,8 +53,6 @@ export default function CardComponent({ card, onClick, selectable, selected, dis
       </div>
     );
   }
-
-  const isClickable = selectable && !disabled;
 
   return (
     <motion.div
@@ -68,6 +96,22 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    userSelect: 'none',
+    flexShrink: 0,
+  }),
+  chip: (w: number, h: number, fontSize: number): React.CSSProperties => ({
+    minWidth: w,
+    height: h,
+    padding: '0 8px',
+    background: '#18181b',
+    borderRadius: 8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: "'SF Mono', Consolas, Monaco, monospace",
+    fontSize,
+    fontWeight: 600,
+    letterSpacing: 0.5,
     userSelect: 'none',
     flexShrink: 0,
   }),

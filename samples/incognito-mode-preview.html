@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Incognito Mode Preview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --bg: linear-gradient(160deg, #1a4a2e 0%, #0d2b1a 100%);
+      --surface: rgba(0, 0, 0, 0.35);
+      --surface-2: rgba(255, 255, 255, 0.08);
+      --text: #fff;
+      --text-muted: rgba(255, 255, 255, 0.55);
+      --accent: #74c69d;
+      --accent-warn: #f1c40f;
+      --card-bg: #fff;
+      --card-red: #c0392b;
+      --card-black: #1a1a2e;
+      --chip-bg: rgba(255, 255, 255, 0.12);
+      --chip-border: rgba(255, 255, 255, 0.18);
+      --chip-text: #e8e8e8;
+      --chip-selected: #f1c40f;
+    }
+
+    body.incognito {
+      --bg: linear-gradient(160deg, #0a0a0c 0%, #121218 50%, #0d0d12 100%);
+      --surface: rgba(255, 255, 255, 0.04);
+      --surface-2: rgba(255, 255, 255, 0.06);
+      --text: #e4e4e7;
+      --text-muted: rgba(228, 228, 231, 0.45);
+      --accent: #a1a1aa;
+      --accent-warn: #71717a;
+      --chip-bg: #18181b;
+      --chip-border: #3f3f46;
+      --chip-text: #d4d4d8;
+      --chip-selected: #52525b;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.35s ease, color 0.35s ease;
+    }
+
+    .preview-banner {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 20px;
+      background: rgba(0, 0, 0, 0.85);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    .preview-banner h1 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #a1a1aa;
+    }
+
+    .preview-banner p {
+      margin: 0;
+      font-size: 12px;
+      color: #71717a;
+    }
+
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .sort-btn {
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .sort-btn.active {
+      border-color: rgba(116, 198, 157, 0.6);
+      background: rgba(116, 198, 157, 0.15);
+      color: #74c69d;
+    }
+
+    body.incognito .sort-btn.active {
+      border-color: rgba(161, 161, 170, 0.5);
+      background: rgba(63, 63, 70, 0.4);
+      color: #d4d4d8;
+    }
+
+    .hand-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .bid-modal-mock {
+      margin-top: 20px;
+      padding: 20px 24px;
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+    }
+
+    .bid-modal-mock h3 {
+      margin: 0 0 4px;
+      font-size: 18px;
+    }
+
+    .bid-modal-mock .sub {
+      margin: 0 0 14px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #d4d4d8;
+    }
+
+    .toggle {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      background: #3f3f46;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.25s;
+    }
+
+    .toggle.on {
+      background: #52525b;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.25s;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .toggle.on::after {
+      transform: translateX(24px);
+      background: #18181b;
+    }
+
+    .mode-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(116, 198, 157, 0.2);
+      color: #74c69d;
+    }
+
+    body.incognito .mode-badge {
+      background: rgba(161, 161, 170, 0.15);
+      color: #a1a1aa;
+    }
+
+    /* ── Game layout (mirrors GamePage) ── */
+    .game {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px 12px 0 0;
+      transition: background 0.35s;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .game-name { font-weight: 800; font-size: 18px; }
+    .room-code { font-size: 13px; color: var(--text-muted); font-family: monospace; }
+
+    .your-turn {
+      color: var(--accent-warn);
+      font-weight: 700;
+      font-size: 14px;
+      animation: pulse 1.2s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+
+    body.incognito .your-turn {
+      animation: none;
+      opacity: 0.8;
+    }
+
+    .layout {
+      display: flex;
+      gap: 16px;
+      padding: 16px 0;
+      flex-wrap: wrap;
+    }
+
+    .center { flex: 1; min-width: 320px; }
+    .sidebar { width: 250px; flex-shrink: 0; }
+
+    .opponents {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .opponent {
+      text-align: center;
+      padding: 10px 16px;
+      background: var(--surface-2);
+      border-radius: 10px;
+      transition: background 0.35s;
+    }
+
+    .opponent-name { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .opponent-meta { font-size: 11px; color: var(--text-muted); }
+
+    .trick-area {
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 20px;
+      background: var(--surface-2);
+      border-radius: 14px;
+      margin-bottom: 20px;
+      transition: background 0.35s;
+    }
+
+    .trick-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    /* ── Normal playing cards ── */
+    .playing-card {
+      width: 70px;
+      height: 95px;
+      background: var(--card-bg);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+
+    .playing-card.red { color: var(--card-red); }
+    .playing-card.black { color: var(--card-black); }
+
+    .playing-card .corner {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 14px;
+      line-height: 1.1;
+    }
+
+    .playing-card .corner.tl { top: 4px; left: 5px; }
+    .playing-card .corner.br { bottom: 4px; right: 5px; transform: rotate(180deg); }
+    .playing-card .suit-center { font-size: 28px; }
+
+    .playing-card.face-down {
+      background: #1a3a6e;
+      border: 2px solid #2a5aae;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* ── Incognito numeric chips ── */
+    .num-chip {
+      min-width: 52px;
+      height: 44px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--chip-bg);
+      border: 1px solid var(--chip-border);
+      border-radius: 8px;
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--chip-text);
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+
+    .num-chip.small {
+      min-width: 44px;
+      height: 36px;
+      font-size: 12px;
+    }
+
+    .num-chip.selected {
+      border-color: var(--chip-selected);
+      box-shadow: 0 0 0 2px rgba(161, 161, 170, 0.35);
+      transform: translateY(-4px);
+    }
+
+    .num-chip.face-down {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .hand-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      padding: 12px 0;
+    }
+
+    .hand-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .score-panel {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: background 0.35s;
+    }
+
+    .score-panel h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 6px 4px; text-align: left; }
+    th { color: var(--text-muted); font-size: 11px; font-weight: 600; }
+    td.score { color: var(--accent); font-weight: 700; }
+
+    .legend {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+    }
+
+    .legend h4 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .legend-item code {
+      background: var(--chip-bg);
+      border: 1px solid var(--chip-border);
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: var(--chip-text);
+    }
+
+    .hidden { display: none !important; }
+
+    .incognito-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 8px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-banner">
+    <div>
+      <h1>Ace Spade — Incognito Mode Preview</h1>
+      <p>Static mockup only. Toggle to compare normal vs incognito UI.</p>
+    </div>
+    <div class="toggle-wrap">
+      <span class="toggle-label">Incognito</span>
+      <button class="toggle" id="incognitoToggle" type="button" aria-label="Toggle incognito mode"></button>
+      <button class="sort-btn" id="sortToggle" type="button">⇅ Sort</button>
+      <span class="mode-badge" id="modeBadge">Normal</span>
+    </div>
+  </div>
+
+  <div class="game">
+    <div class="header">
+      <div class="header-left">
+        <span>♠</span>
+        <span class="game-name">Ace Spade</span>
+        <span class="room-code">#AB12CD</span>
+      </div>
+      <span class="your-turn">▶ Your turn to play!</span>
+      <span style="font-size:14px;color:var(--text-muted)">You 👑</span>
+    </div>
+
+    <div class="layout">
+      <div class="center">
+        <!-- Opponents -->
+        <div class="opponents">
+          <div class="opponent">
+            <div class="opponent-name">Alice</div>
+            <div class="normal-only hand-row" style="padding:4px 0">
+              <div class="playing-card face-down"><span style="font-size:20px">♠</span></div>
+              <div class="playing-card face-down"><span style="font-size:20px">♠</span></div>
+              <div class="playing-card face-down"><span style="font-size:20px">♠</span></div>
+            </div>
+            <div class="incognito-only hidden hand-row" style="padding:4px 0">
+              <div class="num-chip small face-down">?</div>
+              <div class="num-chip small face-down">?</div>
+              <div class="num-chip small face-down">?</div>
+            </div>
+            <div class="opponent-meta">5 cards · Bid 2</div>
+          </div>
+          <div class="opponent">
+            <div class="opponent-name">Bob</div>
+            <div class="normal-only hand-row" style="padding:4px 0">
+              <div class="playing-card face-down"><span style="font-size:20px">♠</span></div>
+              <div class="playing-card face-down"><span style="font-size:20px">♠</span></div>
+              <div class="playing-card face-down"><span style="font-size:20px">♠</span></div>
+            </div>
+            <div class="incognito-only hidden hand-row" style="padding:4px 0">
+              <div class="num-chip small face-down">?</div>
+              <div class="num-chip small face-down">?</div>
+              <div class="num-chip small face-down">?</div>
+            </div>
+            <div class="opponent-meta">5 cards · Bid 1</div>
+          </div>
+        </div>
+
+        <!-- Trick area -->
+        <div class="trick-label">Current trick</div>
+        <div class="trick-area">
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Alice</div>
+            <div class="normal-only playing-card red">
+              <div class="corner tl"><span>7</span><span>♥</span></div>
+              <span class="suit-center">♥</span>
+              <div class="corner br"><span>7</span><span>♥</span></div>
+            </div>
+            <div class="incognito-only hidden num-chip">2-7</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Bob</div>
+            <div class="normal-only playing-card black">
+              <div class="corner tl"><span>10</span><span>♠</span></div>
+              <span class="suit-center">♠</span>
+              <div class="corner br"><span>10</span><span>♠</span></div>
+            </div>
+            <div class="incognito-only hidden num-chip">4-10</div>
+          </div>
+        </div>
+
+        <!-- Your hand (playing phase) -->
+        <div class="hand-toolbar">
+          <p class="hand-label" style="margin:0;text-align:left">Your hand — Score: 42 | Bid: 3 | Tricks: 1</p>
+          <button class="sort-btn" id="sortToggleHand" type="button">⇅ Sort</button>
+        </div>
+        <div class="hand-row normal-only" id="normalHand"></div>
+        <div class="hand-row incognito-only hidden" id="incognitoHand"></div>
+        <p class="incognito-only hidden incognito-note">Cards shown as suit-rank codes (e.g. 4-14) — no suit symbols on screen.</p>
+
+        <!-- Bid modal mock (bidding phase) -->
+        <div class="bid-modal-mock">
+          <h3>Place Your Bid</h3>
+          <p class="sub">Round 5 — viewing cards while bidding</p>
+          <div class="hand-toolbar">
+            <p class="hand-label" style="margin:0;text-align:left">Your cards this round:</p>
+            <button class="sort-btn" id="sortToggleBid" type="button">⇅ Sort</button>
+          </div>
+          <div class="hand-row normal-only" id="normalBidHand"></div>
+          <div class="hand-row incognito-only hidden" id="incognitoBidHand"></div>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="score-panel">
+          <h3>Scoreboard <span style="font-size:12px;color:var(--text-muted)">R5/13</span></h3>
+          <table>
+            <thead>
+              <tr><th>Player</th><th>Bid</th><th>Won</th><th>Score</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>👑 You</td><td>3</td><td>1</td><td class="score">42</td></tr>
+              <tr><td>Alice</td><td>2</td><td>0</td><td class="score">38</td></tr>
+              <tr><td>Bob</td><td>1</td><td>1</td><td class="score">31</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend incognito-only hidden" id="legend">
+      <h4>Incognito encoding (preview reference — not shown in-game)</h4>
+      <p style="margin:0 0 10px;font-size:12px;color:var(--text-muted)">
+        Format: <code style="background:var(--chip-bg);padding:2px 6px;border-radius:4px">suit-rank</code>
+        · Suits: ♦=1, ♥=2, ♣=3, ♠=4
+        · Ranks: 2–10, J=11, Q=12, K=13, A=14
+      </p>
+      <div class="legend-grid" id="legendGrid"></div>
+    </div>
+  </div>
+
+  <script>
+    // Incognito encoding: suit-rank (e.g. 4-14 = Ace of Spades)
+    // Suits: ♦=1, ♥=2, ♣=3, ♠=4
+    // Ranks: 2-10, J=11, Q=12, K=13, A=14
+    const SUIT_NUM = { '♦': 1, '♥': 2, '♣': 3, '♠': 4 };
+    const RANK_NUM = {
+      '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+      'J': 11, 'Q': 12, 'K': 13, 'A': 14,
+    };
+
+    function incognitoCode(suitSymbol, rankDisplay) {
+      return `${SUIT_NUM[suitSymbol]}-${RANK_NUM[rankDisplay]}`;
+    }
+
+    function sortHand(cards) {
+      return [...cards].sort((a, b) => {
+        const suitDiff = SUIT_NUM[a.suit] - SUIT_NUM[b.suit];
+        if (suitDiff !== 0) return suitDiff;
+        return RANK_NUM[b.rank] - RANK_NUM[a.rank];
+      });
+    }
+
+    const hand = [
+      { rank: 'A', suit: '♠', color: 'black' },
+      { rank: 'K', suit: '♥', color: 'red' },
+      { rank: 'Q', suit: '♦', color: 'red' },
+      { rank: 'J', suit: '♣', color: 'black' },
+      { rank: '9', suit: '♠', color: 'black' },
+      { rank: '5', suit: '♥', color: 'red' },
+      { rank: '3', suit: '♦', color: 'red' },
+    ];
+
+    let sortEnabled = false;
+    let incognitoOn = false;
+    const selectedCard = { rank: 'Q', suit: '♦' };
+
+    function renderHandContainer(cards, normalEl, incognitoEl) {
+      normalEl.innerHTML = '';
+      incognitoEl.innerHTML = '';
+      cards.forEach((c) => {
+        const isSelected = c.rank === selectedCard.rank && c.suit === selectedCard.suit;
+        const card = document.createElement('div');
+        card.className = `playing-card ${c.color}`;
+        card.innerHTML = `
+          <div class="corner tl"><span>${c.rank}</span><span>${c.suit}</span></div>
+          <span class="suit-center">${c.suit}</span>
+          <div class="corner br"><span>${c.rank}</span><span>${c.suit}</span></div>
+        `;
+        if (isSelected) {
+          card.style.border = '2px solid #f1c40f';
+          card.style.boxShadow = '0 0 12px rgba(241,196,15,0.5)';
+          card.style.transform = 'translateY(-10px)';
+        }
+        normalEl.appendChild(card);
+
+        const chip = document.createElement('div');
+        chip.className = 'num-chip' + (isSelected ? ' selected' : '');
+        chip.textContent = incognitoCode(c.suit, c.rank);
+        incognitoEl.appendChild(chip);
+      });
+    }
+
+    function renderAllHands() {
+      const cards = sortEnabled ? sortHand(hand) : hand;
+      renderHandContainer(cards, normalHand, incognitoHand);
+      renderHandContainer(cards, normalBidHand, incognitoBidHand);
+    }
+
+    const normalHand = document.getElementById('normalHand');
+    const incognitoHand = document.getElementById('incognitoHand');
+    const normalBidHand = document.getElementById('normalBidHand');
+    const incognitoBidHand = document.getElementById('incognitoBidHand');
+
+    const legendGrid = document.getElementById('legendGrid');
+    hand.forEach((c) => {
+      const code = incognitoCode(c.suit, c.rank);
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `<code>${code}</code> <span>= ${c.rank}${c.suit}</span>`;
+      legendGrid.appendChild(item);
+    });
+
+    const toggle = document.getElementById('incognitoToggle');
+    const badge = document.getElementById('modeBadge');
+    const legend = document.getElementById('legend');
+    const sortButtons = [
+      document.getElementById('sortToggle'),
+      document.getElementById('sortToggleHand'),
+      document.getElementById('sortToggleBid'),
+    ];
+
+    function updateSortButtons() {
+      sortButtons.forEach((btn) => {
+        if (!btn) return;
+        btn.classList.toggle('active', sortEnabled);
+        btn.textContent = sortEnabled ? '⇅ Sorted' : '⇅ Sort';
+      });
+    }
+
+    function setIncognito(on) {
+      incognitoOn = on;
+      document.body.classList.toggle('incognito', on);
+      toggle.classList.toggle('on', on);
+      badge.textContent = on ? 'Incognito' : 'Normal';
+      document.querySelectorAll('.normal-only').forEach((el) => el.classList.toggle('hidden', on));
+      document.querySelectorAll('.incognito-only').forEach((el) => el.classList.toggle('hidden', !on));
+      legend.classList.toggle('hidden', !on);
+    }
+
+    function setSort(on) {
+      sortEnabled = on;
+      updateSortButtons();
+      renderAllHands();
+    }
+
+    toggle.addEventListener('click', () => setIncognito(!incognitoOn));
+    sortButtons.forEach((btn) => {
+      btn.addEventListener('click', () => setSort(!sortEnabled));
+    });
+
+    renderAllHands();
+  </script>
+</body>
+</html>

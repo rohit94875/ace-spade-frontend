@@ -14,6 +14,8 @@ import RoundSummary from '../components/RoundSummary';
 import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
 import ActivityFeed from '../components/ActivityFeed';
+import IncognitoToggle from '../components/IncognitoToggle';
+import { useDisplayStore } from '../store/displayStore';
 
 export default function GamePage() {
   const navigate = useNavigate();
@@ -29,6 +31,7 @@ export default function GamePage() {
   } = useGameStore();
 
   const [showBidModal, setShowBidModal] = useState(false);
+  const incognitoMode = useDisplayStore((s) => s.incognitoMode);
 
   const isMyTurn = currentTurnPlayerId === playerId;
 
@@ -128,7 +131,10 @@ export default function GamePage() {
     (phase === 'BIDDING' || phase === 'PLAYING');
 
   return (
-    <div style={styles.page}>
+    <div style={{
+      ...styles.page,
+      ...(incognitoMode ? styles.pageIncognito : {}),
+    }}>
       {/* Header */}
       <div style={styles.header}>
         <div style={styles.headerLeft}>
@@ -167,6 +173,7 @@ export default function GamePage() {
           )}
         </div>
         <div style={styles.headerRight}>
+          <IncognitoToggle />
           <span style={styles.playerLabel}>
             {username} {isHost ? '👑' : ''}
           </span>
@@ -360,6 +367,9 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: 0,
     paddingBottom: 80,
+  },
+  pageIncognito: {
+    background: 'linear-gradient(160deg, #0a0a0c 0%, #121218 50%, #0d0d12 100%)',
   },
   header: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
