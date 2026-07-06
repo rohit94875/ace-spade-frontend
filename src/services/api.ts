@@ -1,9 +1,27 @@
 import axios from 'axios';
 import type { DisconnectPolicy, SessionResumeResponse } from '../types/game';
+import { loadAuth } from './authStorage';
+import { refresh as refreshAuth } from './authApi';
 
-// BASE_URL is '/' in dev, '/acespade/' in production — strip trailing slash before appending.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const api = axios.create({ baseURL: `${base}/api` });
+
+api.interceptors.request.use(async (config) => {
+  const stored = loadAuth();
+  if (!stored) return config;
+  let token = stored.accessToken;
+  if (Date.now() >= stored.expiresAt - 30_000) {
+    try {
+      const res = await refreshAuth(stored.refreshToken);
+      token = res.accessToken;
+    } catch {
+      return config;
+    }
+  }
+  config.headers = config.headers ?? {};
+  config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
 export interface CreateRoomResponse {
   roomCode: string;
@@ -23,8 +41,9 @@ export const createRoom = (
   username: string,
   playWithBot: boolean,
   disconnectPolicy: DisconnectPolicy,
+  ranked = false,
 ): Promise<CreateRoomResponse> =>
-  api.post('/rooms', { username, playWithBot, disconnectPolicy }).then((r) => r.data);
+  api.post('/rooms', { username, playWithBot, disconnectPolicy, ranked }).then((r) => r.data);
 
 export const joinRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
   api.post(`/rooms/${code}/join`, { username }).then((r) => r.data);

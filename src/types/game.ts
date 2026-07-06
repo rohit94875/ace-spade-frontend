@@ -90,6 +90,7 @@ export interface RoomStateDto {
   currentTurnPlayerId: string;
   hostPlayerId: string;
   playWithBot?: boolean;
+  ranked?: boolean;
   disconnectPolicy?: DisconnectPolicy;
   paused?: boolean;
   pausedByPlayerId?: string | null;
@@ -123,6 +124,7 @@ export interface RoundEndedPayload {
   winnerScore?: number;
   forfeit?: boolean;
   forfeitedUsername?: string;
+  ratingUpdates?: Record<string, import('./auth').RatingDelta>;
 }
 
 export const SUIT_SYMBOLS: Record<Suit, string> = {

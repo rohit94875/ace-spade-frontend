@@ -30,6 +30,7 @@ interface RoundSummary {
   winnerScore?: number;
   forfeit?: boolean;
   forfeitedUsername?: string;
+  ratingUpdates?: Record<string, import('../types/auth').RatingDelta>;
 }
 
 interface GameStore {
@@ -52,6 +53,7 @@ interface GameStore {
   errorMessage: string | null;
   wsConnected: boolean;
   playWithBot: boolean;
+  ranked: boolean;
   paused: boolean;
   pausedAuto: boolean;
   autoStartGame: boolean;
@@ -67,6 +69,7 @@ interface GameStore {
     roomCode: string;
     isHost: boolean;
     playWithBot?: boolean;
+    ranked?: boolean;
     autoStartGame?: boolean;
   }) => void;
   applyResume: (res: SessionResumeResponse, stored: StoredSession) => void;
@@ -101,6 +104,7 @@ const initialState = {
   errorMessage: null as string | null,
   wsConnected: false,
   playWithBot: false,
+  ranked: false,
   paused: false,
   pausedAuto: false,
   autoStartGame: false,
@@ -122,6 +126,7 @@ function applyRoomState(
     hostPlayerId: room.hostPlayerId,
     round: room.round,
     playWithBot: room.playWithBot ?? false,
+    ranked: room.ranked ?? false,
     paused: room.paused ?? false,
     presence: room.presence ?? {},
     chatMessages: room.chatMessages ?? [],
@@ -148,6 +153,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       roomCode: data.roomCode,
       isHost: data.isHost,
       playWithBot: data.playWithBot ?? false,
+      ranked: data.ranked ?? false,
       autoStartGame: data.autoStartGame ?? false,
     });
   },
@@ -310,6 +316,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             winnerScore: r.winnerScore,
             forfeit: r.forfeit,
             forfeitedUsername: r.forfeitedUsername,
+            ratingUpdates: r.ratingUpdates,
           },
           scores: r.cumulativeScores,
           phase: r.gameOver ? 'GAME_END' : 'ROUND_END',
@@ -318,6 +325,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
           pausedAuto: false,
           turnAlert: null,
         });
+        if (r.gameOver && r.ratingUpdates && Object.keys(r.ratingUpdates).length > 0) {
+          import('../store/authStore').then(({ useAuthStore }) => {
+            useAuthStore.getState().refreshProfile().catch(() => undefined);
+          });
+        }
         break;
       }
 
