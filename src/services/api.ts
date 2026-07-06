@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { DisconnectPolicy } from '../types/game';
+import type { DisconnectPolicy, SessionResumeResponse } from '../types/game';
 
 // BASE_URL is '/' in dev, '/acespade/' in production — strip trailing slash before appending.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -31,3 +31,8 @@ export const joinRoom = (code: string, username: string): Promise<JoinRoomRespon
 
 export const getRoom = (code: string) =>
   api.get(`/rooms/${code}`).then((r) => r.data);
+
+export const resumeSession = (sessionToken: string): Promise<SessionResumeResponse> =>
+  api.get('/sessions/me', {
+    headers: { 'X-Session-Token': sessionToken },
+  }).then((r) => r.data);

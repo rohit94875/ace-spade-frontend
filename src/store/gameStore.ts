@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import {
   Card, GamePhase, PlayerDto, RoomStateDto, TrickCard,
   TrickEndedPayload, RoundEndedPayload, GameEvent,
+  ChatMessageDto, PlayerPresenceDto, SessionResumeResponse,
 } from '../types/game';
+import { saveSession, clearSession, StoredSession } from '../services/sessionStorage';
 
 export interface RoundHistoryEntry {
   round: number;
@@ -31,14 +33,11 @@ interface RoundSummary {
 }
 
 interface GameStore {
-  // Session
   playerId: string | null;
   sessionToken: string | null;
   username: string | null;
   roomCode: string | null;
   isHost: boolean;
-
-  // Game state
   phase: GamePhase | null;
   round: number;
   players: PlayerDto[];
@@ -47,11 +46,7 @@ interface GameStore {
   scores: Record<string, number>;
   currentTurnPlayerId: string | null;
   hostPlayerId: string | null;
-
-  // Round-by-round history
   roundHistory: RoundHistoryEntry[];
-
-  // UI overlays
   lastTrick: LastTrick | null;
   roundSummary: RoundSummary | null;
   errorMessage: string | null;
@@ -60,8 +55,11 @@ interface GameStore {
   paused: boolean;
   pausedAuto: boolean;
   autoStartGame: boolean;
+  presence: Record<string, PlayerPresenceDto>;
+  graceSeconds: number;
+  chatMessages: ChatMessageDto[];
+  turnAlert: string | null;
 
-  // Actions
   setSession: (data: {
     playerId: string;
     sessionToken: string;
@@ -71,20 +69,23 @@ interface GameStore {
     playWithBot?: boolean;
     autoStartGame?: boolean;
   }) => void;
+  applyResume: (res: SessionResumeResponse, stored: StoredSession) => void;
+  applySnapshot: (res: SessionResumeResponse) => void;
   setWsConnected: (v: boolean) => void;
   handleGameEvent: (event: GameEvent) => void;
   setHand: (hand: Card[]) => void;
   dismissRoundSummary: () => void;
   dismissLastTrick: () => void;
   clearError: () => void;
+  clearTurnAlert: () => void;
   reset: () => void;
 }
 
 const initialState = {
-  playerId: null,
-  sessionToken: null,
-  username: null,
-  roomCode: null,
+  playerId: null as string | null,
+  sessionToken: null as string | null,
+  username: null as string | null,
+  roomCode: null as string | null,
   isHost: false,
   phase: null as GamePhase | null,
   round: 0,
@@ -103,12 +104,43 @@ const initialState = {
   paused: false,
   pausedAuto: false,
   autoStartGame: false,
+  presence: {} as Record<string, PlayerPresenceDto>,
+  graceSeconds: 120,
+  chatMessages: [] as ChatMessageDto[],
+  turnAlert: null as string | null,
 };
 
-export const useGameStore = create<GameStore>((set) => ({
+function applyRoomState(
+  room: RoomStateDto,
+  extra: Partial<GameStore> = {},
+): Partial<GameStore> {
+  return {
+    phase: room.phase,
+    players: room.players,
+    scores: room.scores,
+    currentTurnPlayerId: room.currentTurnPlayerId,
+    hostPlayerId: room.hostPlayerId,
+    round: room.round,
+    playWithBot: room.playWithBot ?? false,
+    paused: room.paused ?? false,
+    presence: room.presence ?? {},
+    chatMessages: room.chatMessages ?? [],
+    ...extra,
+  };
+}
+
+export const useGameStore = create<GameStore>((set, get) => ({
   ...initialState,
 
-  setSession: (data) =>
+  setSession: (data) => {
+    saveSession({
+      playerId: data.playerId,
+      sessionToken: data.sessionToken,
+      username: data.username,
+      roomCode: data.roomCode,
+      isHost: data.isHost,
+      playWithBot: data.playWithBot,
+    });
     set({
       playerId: data.playerId,
       sessionToken: data.sessionToken,
@@ -117,7 +149,33 @@ export const useGameStore = create<GameStore>((set) => ({
       isHost: data.isHost,
       playWithBot: data.playWithBot ?? false,
       autoStartGame: data.autoStartGame ?? false,
-    }),
+    });
+  },
+
+  applyResume: (res, stored) => {
+    saveSession(stored);
+    const room = res.room!;
+    set({
+      playerId: res.playerId ?? stored.playerId,
+      sessionToken: stored.sessionToken,
+      username: res.username ?? stored.username,
+      roomCode: res.roomCode ?? stored.roomCode,
+      isHost: res.host ?? stored.isHost,
+      hand: res.hand ?? [],
+      currentTrick: res.currentTrick ?? [],
+      ...applyRoomState(room),
+    });
+  },
+
+  applySnapshot: (res) => {
+    if (!res.valid || !res.room) return;
+    const s = get();
+    set({
+      hand: res.hand ?? s.hand,
+      currentTrick: res.currentTrick ?? s.currentTrick,
+      ...applyRoomState(res.room),
+    });
+  },
 
   setWsConnected: (v) => set({ wsConnected: v }),
 
@@ -129,24 +187,21 @@ export const useGameStore = create<GameStore>((set) => ({
 
   clearError: () => set({ errorMessage: null }),
 
-  reset: () => set(initialState),
+  clearTurnAlert: () => set({ turnAlert: null }),
+
+  reset: () => {
+    clearSession();
+    set(initialState);
+  },
 
   handleGameEvent: (event: GameEvent) => {
     const payload = event.payload as Record<string, unknown>;
+    const s = get();
 
     switch (event.type) {
       case 'ROOM_UPDATED': {
         const room = payload as unknown as RoomStateDto;
-        set({
-          phase: room.phase,
-          players: room.players,
-          scores: room.scores,
-          currentTurnPlayerId: room.currentTurnPlayerId,
-          hostPlayerId: room.hostPlayerId,
-          round: room.round,
-          playWithBot: room.playWithBot ?? false,
-          paused: room.paused ?? false,
-        });
+        set(applyRoomState(room));
         break;
       }
 
@@ -168,25 +223,29 @@ export const useGameStore = create<GameStore>((set) => ({
       case 'BID_PLACED': {
         const nextTurn = payload['nextTurnPlayerId'] as string;
         const phase = payload['phase'] as GamePhase;
-        set((s) => ({
+        const isMyTurnNext = nextTurn === s.playerId;
+        set({
           phase,
           currentTurnPlayerId: nextTurn,
           players: s.players.map((p) =>
-            p.id === payload['playerId']
-              ? { ...p, bid: payload['amount'] as number }
-              : p,
+            p.id === payload['playerId'] ? { ...p, bid: payload['amount'] as number } : p,
           ),
-        }));
+          turnAlert: isMyTurnNext && phase === 'BIDDING'
+            ? 'Your turn to bid!'
+            : isMyTurnNext && phase === 'PLAYING'
+              ? 'Your turn to play!'
+              : s.turnAlert,
+        });
         break;
       }
 
       case 'PLAY_PHASE': {
-        // currentTrick is NOT updated here — it is built incrementally via CARD_PLAYED
-        // and cleared by TRICK_ENDED. Overwriting it here caused duplicate cards when
-        // message ordering between CARD_PLAYED and PLAY_PHASE was non-deterministic.
+        const turnId = payload['currentTurnPlayerId'] as string;
+        const isMyTurn = turnId === s.playerId;
         set({
-          currentTurnPlayerId: payload['currentTurnPlayerId'] as string,
+          currentTurnPlayerId: turnId,
           phase: 'PLAYING',
+          turnAlert: isMyTurn ? 'Your turn to play!' : s.turnAlert,
         });
         break;
       }
@@ -194,15 +253,15 @@ export const useGameStore = create<GameStore>((set) => ({
       case 'CARD_PLAYED': {
         const playedPlayerId = payload['playerId'] as string;
         const card = payload['card'] as Card;
+        const playedName = payload['username'] as string;
         const tc: TrickCard = {
           playerId: playedPlayerId,
-          username: payload['username'] as string,
+          username: playedName,
           card,
           playOrder: card.playOrder,
         };
-        set((s) => ({
+        set({
           currentTrick: [...s.currentTrick, tc],
-          // Remove from local hand when it's our own card
           hand: s.playerId === playedPlayerId
             ? s.hand.filter(
                 (c) => !(c.suit === card.suit && c.rank === card.rank && c.deckIndex === card.deckIndex),
@@ -213,20 +272,20 @@ export const useGameStore = create<GameStore>((set) => ({
               ? { ...p, cardCount: Math.max(0, p.cardCount - 1) }
               : p,
           ),
-        }));
+        });
         break;
       }
 
       case 'TRICK_ENDED': {
         const p = payload as unknown as TrickEndedPayload;
-        set((s) => ({
+        set({
           lastTrick: { winnerId: p.winnerId, winnerUsername: p.winnerUsername, trick: p.trick },
           currentTrick: [],
           players: s.players.map((pl) => ({
             ...pl,
             tricksWon: p.trickCounts[pl.id] ?? pl.tricksWon,
           })),
-        }));
+        });
         break;
       }
 
@@ -239,7 +298,7 @@ export const useGameStore = create<GameStore>((set) => ({
           tricksWon: r.tricksWon,
           roundScores: r.roundScores,
         };
-        set((s) => ({
+        set({
           roundSummary: {
             round: r.round,
             roundScores: r.roundScores,
@@ -257,45 +316,69 @@ export const useGameStore = create<GameStore>((set) => ({
           roundHistory: [...s.roundHistory, historyEntry],
           paused: false,
           pausedAuto: false,
-        }));
-        break;
-      }
-
-      case 'PLAYER_LEFT': {
-        set({
-          players: (payload['players'] as PlayerDto[]) ?? [],
+          turnAlert: null,
         });
         break;
       }
 
-      case 'BOT_TAKEOVER': {
+      case 'PLAYER_LEFT':
+        set({
+          players: (payload['players'] as PlayerDto[]) ?? [],
+        });
+        break;
+
+      case 'BOT_TAKEOVER':
         set({
           players: (payload['players'] as PlayerDto[]) ?? [],
           errorMessage: `${payload['botUsername'] ?? 'BOT Vitality'} took over the seat`,
         });
         break;
-      }
 
-      case 'GAME_PAUSED': {
+      case 'GAME_PAUSED':
         set({
           paused: true,
           pausedAuto: Boolean(payload['auto']),
         });
         break;
-      }
 
-      case 'GAME_RESUMED': {
+      case 'GAME_RESUMED':
         set({
           paused: false,
           pausedAuto: false,
         });
         break;
-      }
 
-      case 'ERROR': {
-        set({ errorMessage: payload as unknown as string });
+      case 'PRESENCE_UPDATED': {
+        const presence = (payload['presence'] as Record<string, PlayerPresenceDto>) ?? {};
+        const graceSeconds = (payload['graceSeconds'] as number) ?? s.graceSeconds;
+        set({
+          presence,
+          graceSeconds,
+          players: s.players.map((p) => {
+            const pr = presence[p.id];
+            if (!pr) return p;
+            return {
+              ...p,
+              connected: pr.connected,
+              graceExpiresAt: pr.graceExpiresAt,
+              presenceStatus: pr.status,
+            };
+          }),
+        });
         break;
       }
+
+      case 'CHAT_MESSAGE': {
+        const msg = payload as unknown as ChatMessageDto;
+        set({
+          chatMessages: [...s.chatMessages, msg].slice(-100),
+        });
+        break;
+      }
+
+      case 'ERROR':
+        set({ errorMessage: payload as unknown as string });
+        break;
     }
   },
 }));
