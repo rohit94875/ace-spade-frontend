@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, GamePhase, TrickCard } from '../types/game';
+import { useDisplayStore } from '../store/displayStore';
+import { orderHand } from '../utils/cardDisplay';
 import CardComponent from './CardComponent';
+import HandSortToggle from './HandSortToggle';
 import { sendPlayCard } from '../services/websocket';
 
 interface Props {
@@ -35,6 +38,8 @@ function validCardKeys(hand: Card[], currentTrick: TrickCard[]): Set<string> {
 
 export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTrick }: Props) {
   const [selected, setSelected] = useState<Card | null>(null);
+  const sortHand = useDisplayStore((s) => s.sortHand);
+  const visibleHand = orderHand(hand, sortHand);
 
   const canPlay = phase === 'PLAYING' && isMyTurn;
   const validKeys = canPlay ? validCardKeys(hand, currentTrick) : new Set<string>();
@@ -56,8 +61,15 @@ export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTri
     setSelected(null);
   }
 
+  const showHandControls = phase === 'BIDDING' || phase === 'PLAYING';
+
   return (
     <div style={styles.wrapper}>
+      {showHandControls && (
+        <div style={styles.toolbar}>
+          <HandSortToggle compact />
+        </div>
+      )}
       {canPlay && selected && (
         <motion.div
           style={styles.confirmBanner}
@@ -80,7 +92,7 @@ export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTri
 
       <div style={styles.handRow}>
         <AnimatePresence>
-          {hand.map((card) => {
+          {visibleHand.map((card) => {
             const key = cardKey(card);
             const isSelected = selected?.suit === card.suit
               && selected?.rank === card.rank
@@ -109,6 +121,11 @@ export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTri
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  toolbar: {
+    alignSelf: 'stretch',
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
   wrapper: {
     padding: '12px 16px',
     background: 'rgba(0,0,0,0.25)',

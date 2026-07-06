@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, PlayerDto } from '../types/game';
 import { sendBid } from '../services/websocket';
+import { useDisplayStore } from '../store/displayStore';
+import { orderHand } from '../utils/cardDisplay';
 import CardComponent from './CardComponent';
+import HandSortToggle from './HandSortToggle';
 
 interface Props {
   round: number;
@@ -15,7 +18,10 @@ interface Props {
 
 export default function BidModal({ round, roomCode, hand, players, myPlayerId, onBid }: Props) {
   const [bid, setBid] = useState(0);
+  const sortHand = useDisplayStore((s) => s.sortHand);
+  const incognitoMode = useDisplayStore((s) => s.incognitoMode);
   const otherBids = players.filter((p) => p.id !== myPlayerId && p.bid !== null);
+  const visibleHand = orderHand(hand, sortHand);
 
   function handleBid() {
     sendBid(roomCode, bid);
@@ -29,7 +35,10 @@ export default function BidModal({ round, roomCode, hand, players, myPlayerId, o
       animate={{ opacity: 1 }}
     >
       <motion.div
-        style={styles.modal}
+        style={{
+          ...styles.modal,
+          ...(incognitoMode ? styles.modalIncognito : {}),
+        }}
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -62,10 +71,13 @@ export default function BidModal({ round, roomCode, hand, players, myPlayerId, o
         {/* Show player's hand so they can decide their bid */}
         {hand.length > 0 && (
           <div style={styles.handSection}>
-            <p style={styles.handLabel}>Your cards this round:</p>
+            <div style={styles.handHeader}>
+              <p style={styles.handLabel}>Your cards this round:</p>
+              <HandSortToggle compact />
+            </div>
             <div style={styles.handScroll}>
               <div style={styles.handRow}>
-                {hand.map((card) => (
+                {visibleHand.map((card) => (
                   <CardComponent
                     key={`${card.suit}-${card.rank}-${card.deckIndex}`}
                     card={card}
@@ -171,13 +183,24 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     whiteSpace: 'nowrap',
   },
+  modalIncognito: {
+    background: 'linear-gradient(135deg, #18181b, #0a0a0c)',
+    border: '1px solid rgba(255,255,255,0.08)',
+  },
+  handHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 12,
+  },
   handSection: {
     width: '100%', background: 'rgba(0,0,0,0.25)',
     borderRadius: 12, padding: '14px 16px',
   },
   handLabel: {
     color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 600,
-    marginBottom: 12, textAlign: 'center' as const,
+    margin: 0, textAlign: 'left' as const,
   },
   handScroll: {
     overflowX: 'auto' as const,
