@@ -14,7 +14,7 @@ import RoundSummary from '../components/RoundSummary';
 import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
 import ActivityFeed from '../components/ActivityFeed';
-import IncognitoToggle from '../components/IncognitoToggle';
+import GameHeader from '../components/GameHeader';
 import { useDisplayStore } from '../store/displayStore';
 
 export default function GamePage() {
@@ -135,59 +135,22 @@ export default function GamePage() {
       ...styles.page,
       ...(incognitoMode ? styles.pageIncognito : {}),
     }}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <span style={{ fontSize: 22 }}>♠</span>
-          <span style={styles.gameName}>Ace Spade</span>
-          <span style={styles.roomCode}>#{roomCode}</span>
-        </div>
-        <div style={styles.headerCenter}>
-          {!wsConnected && <span style={styles.connecting}>Connecting…</span>}
-          {wsConnected && phase === 'LOBBY' && (
-            <span style={styles.waiting}>
-              Waiting for players ({players.length}/8)…
-            </span>
-          )}
-          {paused && isSoloBotGame && (
-            <span style={styles.pausedLabel}>⏸ Game paused</span>
-          )}
-          {!paused && phase === 'BIDDING' && !isMyTurn && (
-            <span style={styles.waiting}>
-              Waiting for {players.find((p) => p.id === currentTurnPlayerId)?.username ?? '…'} to bid
-            </span>
-          )}
-          {!paused && phase === 'PLAYING' && !isMyTurn && (
-            <span style={styles.waiting}>
-              Waiting for {players.find((p) => p.id === currentTurnPlayerId)?.username ?? '…'} to play
-            </span>
-          )}
-          {isMyTurn && phase === 'PLAYING' && !paused && (
-            <motion.span
-              style={styles.yourTurn}
-              animate={{ opacity: [1, 0.5, 1] }}
-              transition={{ repeat: Infinity, duration: 1.2 }}
-            >
-              ▶ Your turn to play!
-            </motion.span>
-          )}
-        </div>
-        <div style={styles.headerRight}>
-          <IncognitoToggle />
-          <span style={styles.playerLabel}>
-            {username} {isHost ? '👑' : ''}
-          </span>
-          {canPause && (
-            <button
-              style={styles.pauseBtn}
-              onClick={() => sendPause(roomCode)}
-            >
-              ⏸ Pause
-            </button>
-          )}
-          <button style={styles.leaveBtn} onClick={handleLeave}>Leave</button>
-        </div>
-      </div>
+      <GameHeader
+        roomCode={roomCode}
+        round={round}
+        username={username ?? ''}
+        isHost={isHost}
+        wsConnected={wsConnected}
+        phase={phase}
+        paused={paused}
+        isSoloBotGame={isSoloBotGame}
+        canPause={canPause}
+        isMyTurn={isMyTurn}
+        currentTurnPlayerId={currentTurnPlayerId}
+        players={players}
+        onLeave={handleLeave}
+        onPause={() => sendPause(roomCode)}
+      />
 
       <PresenceBar
         players={players}
@@ -370,32 +333,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   pageIncognito: {
     background: 'linear-gradient(160deg, #0a0a0c 0%, #121218 50%, #0d0d12 100%)',
-  },
-  header: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '12px 20px',
-    background: 'rgba(0,0,0,0.35)',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-    flexShrink: 0,
-  },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: 8 },
-  gameName: { fontWeight: 800, fontSize: 18, color: '#fff', letterSpacing: 1 },
-  roomCode: { fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace', letterSpacing: 2 },
-  headerCenter: { flex: 1, textAlign: 'center' as const },
-  headerRight: { display: 'flex', alignItems: 'center', gap: 10 },
-  playerLabel: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
-  connecting: { color: '#f39c12', fontSize: 13 },
-  waiting: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontStyle: 'italic' },
-  yourTurn: { color: '#f1c40f', fontWeight: 700, fontSize: 14 },
-  pausedLabel: { color: '#f1c40f', fontWeight: 700, fontSize: 14 },
-  leaveBtn: {
-    padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)',
-    background: 'transparent', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: 13,
-  },
-  pauseBtn: {
-    padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(241,196,15,0.5)',
-    background: 'rgba(241,196,15,0.15)', color: '#f1c40f', cursor: 'pointer', fontSize: 13,
-    fontWeight: 600,
   },
   pauseOverlay: {
     position: 'fixed', inset: 0, zIndex: 250,
