@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import { useGameStore } from './store/gameStore';
+import { useAuthStore } from './store/authStore';
 import { loadSession } from './services/sessionStorage';
 import { resumeSession } from './services/api';
 
@@ -13,8 +18,15 @@ function SessionBootstrap({ children }: { children: React.ReactNode }) {
   const roomCode = useGameStore((s) => s.roomCode);
   const applyResume = useGameStore((s) => s.applyResume);
   const reset = useGameStore((s) => s.reset);
+  const initAuth = useAuthStore((s) => s.init);
+  const authReady = useAuthStore((s) => s.initialized);
 
   useEffect(() => {
+    initAuth();
+  }, [initAuth]);
+
+  useEffect(() => {
+    if (!authReady) return;
     const stored = loadSession();
     if (!stored) {
       setReady(true);
@@ -38,9 +50,9 @@ function SessionBootstrap({ children }: { children: React.ReactNode }) {
       })
       .catch(() => reset())
       .finally(() => setReady(true));
-  }, []);
+  }, [authReady]);
 
-  if (!ready) {
+  if (!authReady || !ready) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -51,7 +63,7 @@ function SessionBootstrap({ children }: { children: React.ReactNode }) {
         color: 'rgba(255,255,255,0.7)',
         fontSize: 15,
       }}>
-        Restoring your game session…
+        Loading Ace Spade…
       </div>
     );
   }
@@ -66,6 +78,10 @@ export default function App() {
     <SessionBootstrap>
       <Routes>
         <Route path="/" element={<LobbyPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route
           path="/game"
           element={roomCode ? <GamePage /> : <Navigate to="/" replace />}

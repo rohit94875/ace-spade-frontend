@@ -1,4 +1,5 @@
 export type DisconnectPolicy = 'FORFEIT_WIN' | 'BOT_TAKEOVER';
+export type MaxRounds = 10 | 13;
 
 export type Suit = 'SPADES' | 'CLUBS' | 'HEARTS' | 'DIAMONDS';
 export type Rank =
@@ -85,11 +86,13 @@ export interface RoomStateDto {
   roomCode: string;
   phase: GamePhase;
   round: number;
+  maxRounds?: MaxRounds;
   players: PlayerDto[];
   scores: Record<string, number>;
   currentTurnPlayerId: string;
   hostPlayerId: string;
   playWithBot?: boolean;
+  ranked?: boolean;
   disconnectPolicy?: DisconnectPolicy;
   paused?: boolean;
   pausedByPlayerId?: string | null;
@@ -123,6 +126,7 @@ export interface RoundEndedPayload {
   winnerScore?: number;
   forfeit?: boolean;
   forfeitedUsername?: string;
+  ratingUpdates?: Record<string, import('./auth').RatingDelta>;
 }
 
 export const SUIT_SYMBOLS: Record<Suit, string> = {

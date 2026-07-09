@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { PlayerDto } from '../types/game';
+import { RatingDelta } from '../types/auth';
 import { RoundHistoryEntry } from '../store/gameStore';
 
 interface RoundSummaryData {
@@ -13,6 +14,7 @@ interface RoundSummaryData {
   winnerScore?: number;
   forfeit?: boolean;
   forfeitedUsername?: string;
+  ratingUpdates?: Record<string, RatingDelta>;
 }
 
 interface Props {
@@ -83,6 +85,27 @@ export default function RoundSummary({ data, players, roundHistory, onDismiss }:
             })}
           </tbody>
         </table>
+
+        {data.gameOver && data.ratingUpdates && Object.keys(data.ratingUpdates).length > 0 && (
+          <div style={styles.ratingBox}>
+            <p style={styles.historyTitle}>Ranked rating changes</p>
+            {players.map((p) => {
+              const delta = data.ratingUpdates?.[p.id];
+              if (!delta) return null;
+              const sign = delta.ratingDelta >= 0 ? '+' : '';
+              return (
+                <div key={p.id} style={styles.ratingRow}>
+                  <span>{p.username}</span>
+                  <span>{delta.ratingBefore.toFixed(1)} → {delta.ratingAfter.toFixed(1)}</span>
+                  <span style={{ color: delta.ratingDelta >= 0 ? '#74c69d' : '#e74c3c', fontWeight: 700 }}>
+                    {sign}{delta.ratingDelta.toFixed(1)}
+                  </span>
+                  {delta.tier && <span style={{ color: '#f1c40f' }}>{delta.tier}</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Full round history (always shown on game over, collapsible otherwise) */}
         {roundHistory.length > 1 && (
@@ -200,6 +223,8 @@ const styles: Record<string, React.CSSProperties> = {
   th: { fontSize: 12, color: 'rgba(255,255,255,0.5)', textAlign: 'left' as const, paddingBottom: 8, fontWeight: 600 },
   td: { fontSize: 14, color: 'rgba(255,255,255,0.8)', padding: '7px 4px', borderBottom: '1px solid rgba(255,255,255,0.07)' },
   historyBox: { width: '100%', background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: '14px 16px' },
+  ratingBox: { width: '100%', background: 'rgba(241,196,15,0.08)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(241,196,15,0.2)' },
+  ratingRow: { display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.85)', padding: '6px 0' },
   historyTitle: { fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.55)', marginBottom: 10 },
   historyScroll: { overflowX: 'auto' as const, maxHeight: 260, overflowY: 'auto' as const },
   nextRound: { color: 'rgba(255,255,255,0.45)', fontSize: 12, fontStyle: 'italic' },

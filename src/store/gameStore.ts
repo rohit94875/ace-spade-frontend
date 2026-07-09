@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import {
-  Card, GamePhase, PlayerDto, RoomStateDto, TrickCard,
+  Card, GamePhase, MaxRounds, PlayerDto, RoomStateDto, TrickCard,
   TrickEndedPayload, RoundEndedPayload, GameEvent,
   ChatMessageDto, PlayerPresenceDto, SessionResumeResponse,
 } from '../types/game';
@@ -30,6 +30,7 @@ interface RoundSummary {
   winnerScore?: number;
   forfeit?: boolean;
   forfeitedUsername?: string;
+  ratingUpdates?: Record<string, import('../types/auth').RatingDelta>;
 }
 
 interface GameStore {
@@ -40,6 +41,7 @@ interface GameStore {
   isHost: boolean;
   phase: GamePhase | null;
   round: number;
+  maxRounds: MaxRounds;
   players: PlayerDto[];
   hand: Card[];
   currentTrick: TrickCard[];
@@ -52,6 +54,7 @@ interface GameStore {
   errorMessage: string | null;
   wsConnected: boolean;
   playWithBot: boolean;
+  ranked: boolean;
   paused: boolean;
   pausedAuto: boolean;
   autoStartGame: boolean;
@@ -67,6 +70,7 @@ interface GameStore {
     roomCode: string;
     isHost: boolean;
     playWithBot?: boolean;
+    ranked?: boolean;
     autoStartGame?: boolean;
   }) => void;
   applyResume: (res: SessionResumeResponse, stored: StoredSession) => void;
@@ -89,6 +93,7 @@ const initialState = {
   isHost: false,
   phase: null as GamePhase | null,
   round: 0,
+  maxRounds: 13 as MaxRounds,
   players: [] as PlayerDto[],
   hand: [] as Card[],
   currentTrick: [] as TrickCard[],
@@ -101,6 +106,7 @@ const initialState = {
   errorMessage: null as string | null,
   wsConnected: false,
   playWithBot: false,
+  ranked: false,
   paused: false,
   pausedAuto: false,
   autoStartGame: false,
@@ -121,7 +127,9 @@ function applyRoomState(
     currentTurnPlayerId: room.currentTurnPlayerId,
     hostPlayerId: room.hostPlayerId,
     round: room.round,
+    maxRounds: room.maxRounds === 10 ? 10 : 13,
     playWithBot: room.playWithBot ?? false,
+    ranked: room.ranked ?? false,
     paused: room.paused ?? false,
     presence: room.presence ?? {},
     chatMessages: room.chatMessages ?? [],
@@ -148,6 +156,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       roomCode: data.roomCode,
       isHost: data.isHost,
       playWithBot: data.playWithBot ?? false,
+      ranked: data.ranked ?? false,
       autoStartGame: data.autoStartGame ?? false,
     });
   },
@@ -310,6 +319,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             winnerScore: r.winnerScore,
             forfeit: r.forfeit,
             forfeitedUsername: r.forfeitedUsername,
+            ratingUpdates: r.ratingUpdates,
           },
           scores: r.cumulativeScores,
           phase: r.gameOver ? 'GAME_END' : 'ROUND_END',
@@ -318,6 +328,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
           pausedAuto: false,
           turnAlert: null,
         });
+        if (r.gameOver && r.ratingUpdates && Object.keys(r.ratingUpdates).length > 0) {
+          import('../store/authStore').then(({ useAuthStore }) => {
+            useAuthStore.getState().refreshProfile().catch(() => undefined);
+          });
+        }
         break;
       }
 

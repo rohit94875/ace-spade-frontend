@@ -1,15 +1,18 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createRoom, joinRoom } from '../services/api';
 import { useGameStore } from '../store/gameStore';
-import type { DisconnectPolicy } from '../types/game';
+import { useAuthStore } from '../store/authStore';
+import type { DisconnectPolicy, MaxRounds } from '../types/game';
 
 type LobbyMode = 'solo' | 'join' | 'create';
 
 export default function LobbyPage() {
   const navigate = useNavigate();
   const setSession = useGameStore((s) => s.setSession);
+  const authUser = useAuthStore((s) => s.user);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
 
   const [mode, setMode] = useState<LobbyMode>('solo');
   const [username, setUsername] = useState('');
@@ -17,9 +20,17 @@ export default function LobbyPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [playWithBot, setPlayWithBot] = useState(false);
+  const [ranked, setRanked] = useState(false);
   const [disconnectPolicy, setDisconnectPolicy] = useState<DisconnectPolicy>('FORFEIT_WIN');
+  const [maxRounds, setMaxRounds] = useState<MaxRounds>(13);
   const [showRoomOptions, setShowRoomOptions] = useState(false);
   const [showRules, setShowRules] = useState(false);
+
+  useEffect(() => {
+    if (authUser?.username) {
+      setUsername(authUser.username);
+    }
+  }, [authUser?.username]);
 
   function parseError(e: unknown, fallback: string): string {
     const errData = (e as { response?: { data?: { errors?: string[]; message?: string } | string } })?.response?.data;
@@ -37,7 +48,7 @@ export default function LobbyPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await createRoom(username.trim(), true, 'FORFEIT_WIN');
+      const res = await createRoom(username.trim(), true, 'FORFEIT_WIN', false, maxRounds);
       setSession({ ...res, isHost: true, playWithBot: true, autoStartGame: true });
       navigate('/game');
     } catch (e: unknown) {
@@ -49,11 +60,19 @@ export default function LobbyPage() {
 
   async function handleCreate() {
     if (!username.trim()) { setError('Enter a username'); return; }
+    if (ranked && !isLoggedIn()) {
+      setError('Sign in required for ranked games');
+      return;
+    }
+    if (ranked && playWithBot) {
+      setError('Ranked games cannot include bots');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const res = await createRoom(username.trim(), playWithBot, disconnectPolicy);
-      setSession({ ...res, isHost: true });
+      const res = await createRoom(username.trim(), playWithBot, disconnectPolicy, ranked, maxRounds);
+      setSession({ ...res, isHost: true, playWithBot, ranked });
       navigate('/game');
     } catch (e: unknown) {
       setError(parseError(e, 'Failed to create room. Is the server running?'));
@@ -73,10 +92,15 @@ export default function LobbyPage() {
       navigate('/game');
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: string } })?.response?.data;
-      setError(msg ?? 'Failed to join room. Check the code and try again.');
+      setError(typeof msg === 'string' ? msg : parseError(e, 'Failed to join room. Check the code and try again.'));
     } finally {
       setLoading(false);
     }
+  }
+
+  function onRankedChange(checked: boolean) {
+    setRanked(checked);
+    if (checked) setPlayWithBot(false);
   }
 
   function switchMode(next: LobbyMode) {
@@ -99,11 +123,27 @@ export default function LobbyPage() {
           <p style={styles.subtitle}>Pick a name, then choose how to play</p>
         </div>
 
+        <div style={styles.authBar}>
+          {isLoggedIn() && authUser ? (
+            <>
+              <span style={styles.mmrBadge}>
+                MMR {authUser.mmr?.toFixed(1) ?? '—'}
+                {authUser.tier ? ` · ${authUser.tier}` : ` · Placing (${authUser.placementGames ?? 0}/${authUser.placementRequired ?? 5})`}
+              </span>
+              <Link to="/profile" style={styles.authLink}>Profile</Link>
+            </>
+          ) : (
+            <Link to="/login" style={styles.authLink}>Sign in for ranked</Link>
+          )}
+          <Link to="/leaderboard" style={styles.authLink}>Leaderboard</Link>
+        </div>
+
         <input
           style={styles.input}
           placeholder="Your username"
           value={username}
           maxLength={20}
+          readOnly={isLoggedIn()}
           onChange={(e) => setUsername(e.target.value)}
         />
 
@@ -127,6 +167,25 @@ export default function LobbyPage() {
           <div style={styles.panel}>
             <p style={styles.panelTitle}>Play vs Bot</p>
             <p style={styles.panelDesc}>Instant 1v1 against BOT Vitality. Pause anytime.</p>
+            <p style={styles.optionLabel}>Game length:</p>
+            <label style={styles.radioRow}>
+              <input
+                type="radio"
+                name="soloMaxRounds"
+                checked={maxRounds === 13}
+                onChange={() => setMaxRounds(13)}
+              />
+              <span>13 rounds (full game)</span>
+            </label>
+            <label style={styles.radioRow}>
+              <input
+                type="radio"
+                name="soloMaxRounds"
+                checked={maxRounds === 10}
+                onChange={() => setMaxRounds(10)}
+              />
+              <span>10 rounds (quick game)</span>
+            </label>
             <motion.button
               style={styles.heroBtn}
               whileHover={{ scale: 1.02 }}
@@ -188,13 +247,41 @@ export default function LobbyPage() {
 
             {showRoomOptions && (
               <div style={styles.optionsBox}>
+                <p style={styles.optionLabel}>Game length:</p>
+                <label style={styles.radioRow}>
+                  <input
+                    type="radio"
+                    name="createMaxRounds"
+                    checked={maxRounds === 13}
+                    onChange={() => setMaxRounds(13)}
+                  />
+                  <span>13 rounds (full game)</span>
+                </label>
+                <label style={styles.radioRow}>
+                  <input
+                    type="radio"
+                    name="createMaxRounds"
+                    checked={maxRounds === 10}
+                    onChange={() => setMaxRounds(10)}
+                  />
+                  <span>10 rounds (quick game)</span>
+                </label>
+                <label style={styles.checkRow}>
+                  <input
+                    type="checkbox"
+                    checked={ranked}
+                    onChange={(e) => onRankedChange(e.target.checked)}
+                  />
+                  <span>Ranked match (login required · affects MMR)</span>
+                </label>
                 <label style={styles.checkRow}>
                   <input
                     type="checkbox"
                     checked={playWithBot}
+                    disabled={ranked}
                     onChange={(e) => setPlayWithBot(e.target.checked)}
                   />
-                  <span>Add BOT Vitality to fill an empty seat</span>
+                  <span>Add BOT Vitality to fill an empty seat {ranked ? '(disabled for ranked)' : ''}</span>
                 </label>
                 <p style={styles.optionLabel}>If someone leaves:</p>
                 <label style={styles.radioRow}>
@@ -228,7 +315,7 @@ export default function LobbyPage() {
           </button>
           {showRules && (
             <p style={styles.rulesText}>
-              13 rounds · bid tricks before each round · trump order ♠ &gt; ♣ &gt; ♥ &gt; ♦ ·
+              10 or 13 rounds · bid tricks before each round · trump order ♠ &gt; ♣ &gt; ♥ &gt; ♦ ·
               2–8 players. Hit your bid exactly for max score (bid 0 → 10pts, bid N → 10+N×11 pts).
             </p>
           )}
@@ -260,6 +347,12 @@ const styles: Record<string, React.CSSProperties> = {
   title: { textAlign: 'center', marginBottom: 20 },
   gameName: { fontSize: 30, fontWeight: 800, color: '#fff', letterSpacing: 1, margin: '8px 0 4px' },
   subtitle: { color: 'rgba(255,255,255,0.55)', fontSize: 13, margin: 0 },
+  authBar: {
+    display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center',
+    justifyContent: 'center', marginBottom: 14, fontSize: 12,
+  },
+  mmrBadge: { color: '#f1c40f', fontWeight: 600 },
+  authLink: { color: '#74c69d', textDecoration: 'none' },
   input: {
     padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
     background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: 15,

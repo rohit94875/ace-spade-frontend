@@ -7,7 +7,35 @@ type HandCallback = (update: HandUpdate) => void;
 type ErrorCallback = (msg: GameEvent) => void;
 type SnapshotCallback = (snapshot: SessionResumeResponse) => void;
 
+const HEARTBEAT_MS = 10_000;
+/** Delay teardown on React effect cleanup so StrictMode remounts do not drop the socket. */
+const CLEANUP_DISCONNECT_MS = 500;
+
 let stompClient: Client | null = null;
+let activeConnectionKey: string | null = null;
+let pendingDisconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+function subscribeToGame(
+  client: Client,
+  roomCode: string,
+  onEvent: EventCallback,
+  onHand: HandCallback,
+  onError: ErrorCallback,
+  onSnapshot: SnapshotCallback,
+) {
+  client.subscribe(`/topic/game/${roomCode}`, (msg: IMessage) => {
+    onEvent(JSON.parse(msg.body) as GameEvent);
+  });
+  client.subscribe('/user/queue/hand', (msg: IMessage) => {
+    onHand(JSON.parse(msg.body) as HandUpdate);
+  });
+  client.subscribe('/user/queue/errors', (msg: IMessage) => {
+    onError(JSON.parse(msg.body) as GameEvent);
+  });
+  client.subscribe('/user/queue/snapshot', (msg: IMessage) => {
+    onSnapshot(JSON.parse(msg.body) as SessionResumeResponse);
+  });
+}
 
 export function connect(
   roomCode: string,
@@ -17,34 +45,62 @@ export function connect(
   onError: ErrorCallback,
   onSnapshot: SnapshotCallback,
   onConnected?: () => void,
+  onDisconnected?: () => void,
 ) {
-  // BASE_URL is '/' in dev, '/acespade/' in production — strip trailing slash for URL concat.
+  const connectionKey = `${roomCode}:${sessionToken}`;
+  cancelScheduledDisconnect();
+
+  if (stompClient?.active && activeConnectionKey === connectionKey) {
+    onConnected?.();
+    return;
+  }
+
+  if (stompClient) {
+    stompClient.deactivate();
+    stompClient = null;
+    activeConnectionKey = null;
+  }
+
+  activeConnectionKey = connectionKey;
   const wsBase = import.meta.env.BASE_URL.replace(/\/$/, '');
 
   stompClient = new Client({
     webSocketFactory: () => new SockJS(`${wsBase}/ws`) as WebSocket,
     connectHeaders: { 'X-Session-Token': sessionToken },
-    reconnectDelay: 3000,
+    reconnectDelay: 2000,
+    heartbeatIncoming: HEARTBEAT_MS,
+    heartbeatOutgoing: HEARTBEAT_MS,
     onConnect: () => {
-      stompClient!.subscribe(`/topic/game/${roomCode}`, (msg: IMessage) => {
-        onEvent(JSON.parse(msg.body) as GameEvent);
-      });
-      stompClient!.subscribe('/user/queue/hand', (msg: IMessage) => {
-        onHand(JSON.parse(msg.body) as HandUpdate);
-      });
-      stompClient!.subscribe('/user/queue/errors', (msg: IMessage) => {
-        onError(JSON.parse(msg.body) as GameEvent);
-      });
-      stompClient!.subscribe('/user/queue/snapshot', (msg: IMessage) => {
-        onSnapshot(JSON.parse(msg.body) as SessionResumeResponse);
-      });
+      subscribeToGame(stompClient!, roomCode, onEvent, onHand, onError, onSnapshot);
       onConnected?.();
+    },
+    onDisconnect: () => {
+      onDisconnected?.();
+    },
+    onWebSocketClose: () => {
+      onDisconnected?.();
     },
     onStompError: (frame) => {
       console.error('STOMP error', frame);
+      onDisconnected?.();
     },
   });
   stompClient.activate();
+}
+
+export function scheduleDisconnect(delayMs = CLEANUP_DISCONNECT_MS) {
+  cancelScheduledDisconnect();
+  pendingDisconnectTimer = setTimeout(() => {
+    pendingDisconnectTimer = null;
+    disconnect();
+  }, delayMs);
+}
+
+export function cancelScheduledDisconnect() {
+  if (pendingDisconnectTimer) {
+    clearTimeout(pendingDisconnectTimer);
+    pendingDisconnectTimer = null;
+  }
 }
 
 export function sendLeave(roomCode: string) {
@@ -67,8 +123,10 @@ export function sendChat(roomCode: string, text: string) {
 }
 
 export function disconnect() {
+  cancelScheduledDisconnect();
   stompClient?.deactivate();
   stompClient = null;
+  activeConnectionKey = null;
 }
 
 export function sendStart(roomCode: string) {
