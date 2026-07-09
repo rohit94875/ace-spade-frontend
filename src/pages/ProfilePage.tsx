@@ -63,9 +63,13 @@ export default function ProfilePage() {
 
         {!user.placementComplete && (
           <p style={styles.placementNote}>
-            Play {placementLeft} more ranked game{placementLeft === 1 ? '' : 's'} to reveal your tier badge. MMR is always visible.
+            Play {placementLeft} more ranked game{placementLeft === 1 ? '' : 's'} to reveal your tier badge (after {user.placementRequired} placement games). MMR is always visible.
           </p>
         )}
+
+        <p style={styles.casualNote}>
+          Casual games (5 rounds) don&apos;t affect MMR. Create a ranked room from the lobby for longer games and leaderboard progress.
+        </p>
 
         <h2 style={styles.sectionTitle}>Ranked match history</h2>
         {history.length === 0 ? (
@@ -106,7 +110,8 @@ const styles: Record<string, React.CSSProperties> = {
   stat: { background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: 12 },
   statLabel: { display: 'block', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 4 },
   statValue: { color: '#fff', fontWeight: 700, fontSize: 16 },
-  placementNote: { fontSize: 12, color: '#f1c40f', marginBottom: 16 },
+  placementNote: { fontSize: 12, color: '#f1c40f', marginBottom: 12 },
+  casualNote: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, lineHeight: 1.45 },
   sectionTitle: { color: '#fff', fontSize: 16, margin: '8px 0 12px' },
   muted: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
   historyList: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 },

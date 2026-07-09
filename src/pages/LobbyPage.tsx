@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { createRoom, joinRoom } from '../services/api';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
-import type { DisconnectPolicy, MaxRounds } from '../types/game';
+import type { DisconnectPolicy } from '../types/game';
+import { CASUAL_MAX_ROUNDS, DEFAULT_RANKED_MAX_ROUNDS } from '../constants/gameLength';
 
 type LobbyMode = 'solo' | 'join' | 'create';
 
@@ -22,7 +23,7 @@ export default function LobbyPage() {
   const [playWithBot, setPlayWithBot] = useState(false);
   const [ranked, setRanked] = useState(false);
   const [disconnectPolicy, setDisconnectPolicy] = useState<DisconnectPolicy>('FORFEIT_WIN');
-  const [maxRounds, setMaxRounds] = useState<MaxRounds>(13);
+  const [rankedMaxRounds, setRankedMaxRounds] = useState<10 | 13>(DEFAULT_RANKED_MAX_ROUNDS);
   const [showRoomOptions, setShowRoomOptions] = useState(false);
   const [showRules, setShowRules] = useState(false);
 
@@ -48,7 +49,7 @@ export default function LobbyPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await createRoom(username.trim(), true, 'FORFEIT_WIN', false, maxRounds);
+      const res = await createRoom(username.trim(), true, 'FORFEIT_WIN', false, CASUAL_MAX_ROUNDS);
       setSession({ ...res, isHost: true, playWithBot: true, autoStartGame: true });
       navigate('/game');
     } catch (e: unknown) {
@@ -71,7 +72,13 @@ export default function LobbyPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await createRoom(username.trim(), playWithBot, disconnectPolicy, ranked, maxRounds);
+      const res = await createRoom(
+        username.trim(),
+        playWithBot,
+        disconnectPolicy,
+        ranked,
+        ranked ? rankedMaxRounds : CASUAL_MAX_ROUNDS,
+      );
       setSession({ ...res, isHost: true, playWithBot, ranked });
       navigate('/game');
     } catch (e: unknown) {
@@ -128,7 +135,7 @@ export default function LobbyPage() {
             <>
               <span style={styles.mmrBadge}>
                 MMR {authUser.mmr?.toFixed(1) ?? '—'}
-                {authUser.tier ? ` · ${authUser.tier}` : ` · Placing (${authUser.placementGames ?? 0}/${authUser.placementRequired ?? 5})`}
+                {authUser.tier ? ` · ${authUser.tier}` : ` · Placing (${authUser.placementGames ?? 0}/${authUser.placementRequired ?? 3})`}
               </span>
               <Link to="/profile" style={styles.authLink}>Profile</Link>
             </>
@@ -167,25 +174,13 @@ export default function LobbyPage() {
           <div style={styles.panel}>
             <p style={styles.panelTitle}>Play vs Bot</p>
             <p style={styles.panelDesc}>Instant 1v1 against BOT Vitality. Pause anytime.</p>
-            <p style={styles.optionLabel}>Game length:</p>
-            <label style={styles.radioRow}>
-              <input
-                type="radio"
-                name="soloMaxRounds"
-                checked={maxRounds === 13}
-                onChange={() => setMaxRounds(13)}
-              />
-              <span>13 rounds (full game)</span>
-            </label>
-            <label style={styles.radioRow}>
-              <input
-                type="radio"
-                name="soloMaxRounds"
-                checked={maxRounds === 10}
-                onChange={() => setMaxRounds(10)}
-              />
-              <span>10 rounds (quick game)</span>
-            </label>
+            <div style={styles.badgeRow}>
+              <span style={styles.casualBadge}>Casual · {CASUAL_MAX_ROUNDS} rounds max</span>
+            </div>
+            <div style={styles.upsellBox}>
+              <strong style={{ color: '#f1c40f' }}>Want a longer game?</strong>
+              {' '}Sign in and play <strong style={{ color: '#f1c40f' }}>Ranked</strong> for 10 or 13 rounds with MMR on the line.
+            </div>
             <motion.button
               style={styles.heroBtn}
               whileHover={{ scale: 1.02 }}
@@ -227,6 +222,10 @@ export default function LobbyPage() {
           <div style={styles.panel}>
             <p style={styles.panelTitle}>Create a room</p>
             <p style={styles.panelDesc}>You&apos;ll get a code to share with friends (2–8 players).</p>
+            <div style={styles.badgeRow}>
+              <span style={styles.casualBadge}>Casual · {CASUAL_MAX_ROUNDS} rounds</span>
+              {ranked && <span style={styles.rankedBadge}>Ranked · MMR</span>}
+            </div>
             <motion.button
               style={styles.primaryBtn}
               whileHover={{ scale: 1.02 }}
@@ -247,33 +246,42 @@ export default function LobbyPage() {
 
             {showRoomOptions && (
               <div style={styles.optionsBox}>
-                <p style={styles.optionLabel}>Game length:</p>
-                <label style={styles.radioRow}>
-                  <input
-                    type="radio"
-                    name="createMaxRounds"
-                    checked={maxRounds === 13}
-                    onChange={() => setMaxRounds(13)}
-                  />
-                  <span>13 rounds (full game)</span>
-                </label>
-                <label style={styles.radioRow}>
-                  <input
-                    type="radio"
-                    name="createMaxRounds"
-                    checked={maxRounds === 10}
-                    onChange={() => setMaxRounds(10)}
-                  />
-                  <span>10 rounds (quick game)</span>
-                </label>
                 <label style={styles.checkRow}>
                   <input
                     type="checkbox"
                     checked={ranked}
                     onChange={(e) => onRankedChange(e.target.checked)}
                   />
-                  <span>Ranked match (login required · affects MMR)</span>
+                  <span>Ranked match (login required · affects MMR · 10 or 13 rounds)</span>
                 </label>
+                {ranked ? (
+                  <>
+                    <p style={styles.optionLabel}>Ranked game length:</p>
+                    <label style={styles.radioRow}>
+                      <input
+                        type="radio"
+                        name="createMaxRounds"
+                        checked={rankedMaxRounds === 13}
+                        onChange={() => setRankedMaxRounds(13)}
+                      />
+                      <span>13 rounds (full ranked)</span>
+                    </label>
+                    <label style={styles.radioRow}>
+                      <input
+                        type="radio"
+                        name="createMaxRounds"
+                        checked={rankedMaxRounds === 10}
+                        onChange={() => setRankedMaxRounds(10)}
+                      />
+                      <span>10 rounds (quick ranked)</span>
+                    </label>
+                  </>
+                ) : (
+                  <p style={styles.casualNote}>
+                    Casual rooms are always {CASUAL_MAX_ROUNDS} rounds and do not affect MMR.
+                    Check Ranked above for longer games.
+                  </p>
+                )}
                 <label style={styles.checkRow}>
                   <input
                     type="checkbox"
@@ -315,7 +323,7 @@ export default function LobbyPage() {
           </button>
           {showRules && (
             <p style={styles.rulesText}>
-              10 or 13 rounds · bid tricks before each round · trump order ♠ &gt; ♣ &gt; ♥ &gt; ♦ ·
+              Casual: {CASUAL_MAX_ROUNDS} rounds · Ranked: 10 or 13 rounds · bid tricks before each round · trump order ♠ &gt; ♣ &gt; ♥ &gt; ♦ ·
               2–8 players. Hit your bid exactly for max score (bid 0 → 10pts, bid N → 10+N×11 pts).
             </p>
           )}
@@ -442,6 +450,47 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(255,255,255,0.85)',
   },
   optionLabel: { margin: '4px 0 0', fontWeight: 600, fontSize: 12, color: 'rgba(255,255,255,0.55)' },
+  badgeRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 2 },
+  casualBadge: {
+    display: 'inline-block',
+    padding: '4px 10px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 700,
+    background: 'rgba(52, 152, 219, 0.2)',
+    color: '#85c1e9',
+    border: '1px solid rgba(52, 152, 219, 0.35)',
+  },
+  rankedBadge: {
+    display: 'inline-block',
+    padding: '4px 10px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 700,
+    background: 'rgba(241, 196, 15, 0.15)',
+    color: '#f1c40f',
+    border: '1px solid rgba(241, 196, 15, 0.35)',
+  },
+  upsellBox: {
+    marginTop: 4,
+    padding: '12px 14px',
+    borderRadius: 10,
+    background: 'rgba(241, 196, 15, 0.08)',
+    border: '1px solid rgba(241, 196, 15, 0.2)',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    lineHeight: 1.5,
+  },
+  casualNote: {
+    margin: 0,
+    padding: '10px 12px',
+    borderRadius: 8,
+    background: 'rgba(52, 152, 219, 0.1)',
+    border: '1px solid rgba(52, 152, 219, 0.2)',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
+    lineHeight: 1.45,
+  },
   checkRow: { display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' },
   radioRow: { display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', paddingLeft: 4 },
   error: { color: '#ff7b7b', fontSize: 13, textAlign: 'center', marginTop: 12 },

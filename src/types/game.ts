@@ -1,5 +1,7 @@
 export type DisconnectPolicy = 'FORFEIT_WIN' | 'BOT_TAKEOVER';
-export type MaxRounds = 10 | 13;
+
+import type { MaxRounds } from '../constants/gameLength';
+export type { MaxRounds };
 
 export type Suit = 'SPADES' | 'CLUBS' | 'HEARTS' | 'DIAMONDS';
 export type Rank =

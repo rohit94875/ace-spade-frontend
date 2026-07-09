@@ -26,7 +26,7 @@ export default function LeaderboardPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <h1 style={styles.title}>Global Ranked Leaderboard</h1>
-        <p style={styles.sub}>Season 1 · One global pool · Tier shown after 5 placement games</p>
+        <p style={styles.sub}>Season 1 · One global pool · Tier shown after 3 placement games · Casual (5 rounds) does not affect MMR</p>
 
         {loading ? (
           <p style={styles.muted}>Loading…</p>

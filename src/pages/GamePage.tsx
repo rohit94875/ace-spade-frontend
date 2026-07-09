@@ -5,6 +5,7 @@ import { useGameStore } from '../store/gameStore';
 import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart } from '../services/websocket';
 import { getRoom } from '../services/api';
 import type { RoomStateDto } from '../types/game';
+import { normalizeMaxRounds } from '../constants/gameLength';
 import PlayerHand from '../components/PlayerHand';
 import TrickArea from '../components/TrickArea';
 import OpponentHands from '../components/OpponentHands';
@@ -68,7 +69,7 @@ export default function GamePage() {
           currentTurnPlayerId: room.currentTurnPlayerId,
           hostPlayerId: room.hostPlayerId,
           round: room.round,
-          maxRounds: room.maxRounds === 10 ? 10 : 13,
+          maxRounds: normalizeMaxRounds(room.maxRounds),
           playWithBot: room.playWithBot ?? false,
           paused: room.paused ?? false,
           presence: room.presence ?? {},
