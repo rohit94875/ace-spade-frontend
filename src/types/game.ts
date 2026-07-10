@@ -63,6 +63,16 @@ export interface ChatMessageDto {
   sentAt: number;
 }
 
+export interface PublicRoomDto {
+  roomCode: string;
+  hostUsername: string;
+  playerCount: number;
+  maxPlayers: number;
+  ranked: boolean;
+  maxRounds: number;
+  playWithBot: boolean;
+}
+
 export interface SessionResumeResponse {
   valid: boolean;
   playerId?: string;

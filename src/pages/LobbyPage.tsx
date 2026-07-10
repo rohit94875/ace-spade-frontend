@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { createRoom, joinRoom } from '../services/api';
+import { createRoom, joinRoom, listPublicRooms } from '../services/api';
 import { loadNickname, saveNickname } from '../services/nicknameStorage';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
-import type { DisconnectPolicy } from '../types/game';
+import type { DisconnectPolicy, PublicRoomDto } from '../types/game';
 import {
   CASUAL_MAX_ROUNDS,
   DEFAULT_RANKED_MAX_ROUNDS,
@@ -33,8 +33,13 @@ export default function LobbyPage() {
   const [ranked, setRanked] = useState<boolean>(() => isLoggedIn());
   const [disconnectPolicy, setDisconnectPolicy] = useState<DisconnectPolicy>('FORFEIT_WIN');
   const [rankedMaxRounds, setRankedMaxRounds] = useState<RankedMaxRounds>(DEFAULT_RANKED_MAX_ROUNDS);
+  const [publicRoom, setPublicRoom] = useState(true);
+  const [openRooms, setOpenRooms] = useState<PublicRoomDto[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
   const [showRoomOptions, setShowRoomOptions] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [searchParams] = useSearchParams();
+  const autoJoinAttempted = useRef(false);
 
   useEffect(() => {
     const saved = loadNickname();
@@ -75,7 +80,7 @@ export default function LobbyPage() {
     setError('');
     try {
       const trimmed = nickname.trim();
-      const res = await createRoom(trimmed, true, 'FORFEIT_WIN', false, CASUAL_MAX_ROUNDS);
+      const res = await createRoom(trimmed, true, 'FORFEIT_WIN', false, CASUAL_MAX_ROUNDS, false);
       rememberNickname(trimmed);
       setSession({ ...res, isHost: true, playWithBot: true, autoStartGame: true });
       navigate('/game');
@@ -107,6 +112,7 @@ export default function LobbyPage() {
         disconnectPolicy,
         ranked,
         ranked ? rankedMaxRounds : CASUAL_MAX_ROUNDS,
+        publicRoom,
       );
       rememberNickname(trimmed);
       setSession({ ...res, isHost: true, playWithBot, ranked });
@@ -118,15 +124,16 @@ export default function LobbyPage() {
     }
   }
 
-  async function handleJoin() {
-    const nickError = validateNickname(nickname);
+  async function joinWith(code: string, nick: string) {
+    const nickError = validateNickname(nick);
     if (nickError) { setError(nickError); return; }
-    if (!roomCode.trim()) { setError('Enter a room code'); return; }
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) { setError('Enter a room code'); return; }
     setLoading(true);
     setError('');
     try {
-      const trimmed = nickname.trim();
-      const res = await joinRoom(roomCode.trim().toUpperCase(), trimmed);
+      const trimmed = nick.trim();
+      const res = await joinRoom(cleanCode, trimmed);
       rememberNickname(trimmed);
       setSession({ ...res, isHost: false });
       navigate('/game');
@@ -138,6 +145,27 @@ export default function LobbyPage() {
     }
   }
 
+  function handleJoin() {
+    joinWith(roomCode, nickname);
+  }
+
+  // Deep link: opening the app with ?join=CODE lands on the join flow with the
+  // code prefilled, and auto-joins immediately if a nickname is already saved.
+  useEffect(() => {
+    const joinCode = searchParams.get('join');
+    if (!joinCode || autoJoinAttempted.current) return;
+    autoJoinAttempted.current = true;
+    const code = joinCode.toUpperCase();
+    setMode('join');
+    setRoomCode(code);
+    const saved = loadNickname() ?? authUser?.username ?? '';
+    if (saved) setNickname(saved);
+    if (saved && !validateNickname(saved)) {
+      joinWith(code, saved);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   function onRankedChange(checked: boolean) {
     setRanked(checked);
     if (checked) setPlayWithBot(false);
@@ -148,6 +176,22 @@ export default function LobbyPage() {
     setError('');
     setShowRoomOptions(false);
   }
+
+  function refreshOpenRooms() {
+    setRoomsLoading(true);
+    listPublicRooms()
+      .then(setOpenRooms)
+      .catch(() => setOpenRooms([]))
+      .finally(() => setRoomsLoading(false));
+  }
+
+  // Load (and periodically refresh) the open public rooms while browsing to join.
+  useEffect(() => {
+    if (mode !== 'join') return;
+    refreshOpenRooms();
+    const id = setInterval(refreshOpenRooms, 5000);
+    return () => clearInterval(id);
+  }, [mode]);
 
   return (
     <div style={styles.page}>
@@ -251,6 +295,37 @@ export default function LobbyPage() {
             >
               {loading ? '…' : 'Join room'}
             </motion.button>
+
+            <div style={styles.openRoomsHeader}>
+              <span style={styles.openRoomsTitle}>Open rooms</span>
+              <button type="button" style={styles.refreshBtn} onClick={refreshOpenRooms}>
+                {roomsLoading ? '…' : '↻ Refresh'}
+              </button>
+            </div>
+            {openRooms.length === 0 ? (
+              <p style={styles.openRoomsEmpty}>
+                {roomsLoading ? 'Looking for open rooms…' : 'No public rooms open right now. Enter a code above or create one.'}
+              </p>
+            ) : (
+              <div style={styles.openRoomsList}>
+                {openRooms.map((r) => (
+                  <button
+                    key={r.roomCode}
+                    type="button"
+                    style={styles.openRoomRow}
+                    disabled={loading}
+                    onClick={() => joinWith(r.roomCode, nickname)}
+                  >
+                    <span style={styles.openRoomCode}>{r.roomCode}</span>
+                    <span style={styles.openRoomMeta}>
+                      {r.ranked ? `Ranked · ${r.maxRounds}r` : `Casual · ${r.maxRounds}r`}
+                    </span>
+                    <span style={styles.openRoomHost}>host {r.hostUsername}</span>
+                    <span style={styles.openRoomCount}>{r.playerCount}/{r.maxPlayers}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -267,6 +342,9 @@ export default function LobbyPage() {
               {!ranked && playWithBot && (
                 <span style={styles.botBadge}>+ BOT Vitality</span>
               )}
+              <span style={styles.policyBadge}>
+                {publicRoom ? '🌐 Public' : '🔒 Private'}
+              </span>
               <span style={styles.policyBadge}>
                 If someone leaves: {disconnectPolicy === 'FORFEIT_WIN' ? 'other wins' : 'bot takes over'}
               </span>
@@ -320,6 +398,14 @@ export default function LobbyPage() {
                     Check Ranked above for longer games.
                   </p>
                 )}
+                <label style={styles.checkRow}>
+                  <input
+                    type="checkbox"
+                    checked={publicRoom}
+                    onChange={(e) => setPublicRoom(e.target.checked)}
+                  />
+                  <span>List publicly (anyone can browse and join). Uncheck for a private, code-only room.</span>
+                </label>
                 <label style={styles.checkRow}>
                   <input
                     type="checkbox"
@@ -573,6 +659,80 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fff',
     fontSize: 13,
     cursor: 'pointer',
+  },
+  openRoomsHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  openRoomsTitle: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'rgba(255,255,255,0.55)',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  refreshBtn: {
+    border: 'none',
+    background: 'transparent',
+    color: '#74c69d',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  openRoomsEmpty: {
+    margin: '6px 0 0',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+    lineHeight: 1.4,
+  },
+  openRoomsList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 6,
+    maxHeight: 220,
+    overflowY: 'auto' as const,
+    marginTop: 2,
+  },
+  openRoomRow: {
+    display: 'grid',
+    gridTemplateColumns: 'auto 1fr auto',
+    gridTemplateAreas: '"code meta count" "host host count"',
+    alignItems: 'center',
+    gap: '2px 10px',
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(255,255,255,0.05)',
+    color: '#fff',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+    width: '100%',
+  },
+  openRoomCode: {
+    gridArea: 'code',
+    fontFamily: 'monospace',
+    fontWeight: 800,
+    fontSize: 15,
+    letterSpacing: 1.5,
+    color: '#f1c40f',
+  },
+  openRoomMeta: {
+    gridArea: 'meta',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  openRoomHost: {
+    gridArea: 'host',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.45)',
+  },
+  openRoomCount: {
+    gridArea: 'count',
+    fontSize: 13,
+    fontWeight: 700,
+    color: '#85c1e9',
   },
   checkRow: { display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' },
   radioRow: { display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', paddingLeft: 4 },

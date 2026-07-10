@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { DisconnectPolicy, MaxRounds, SessionResumeResponse } from '../types/game';
+import type { DisconnectPolicy, MaxRounds, PublicRoomDto, SessionResumeResponse } from '../types/game';
 import { loadAuth } from './authStorage';
 import { refresh as refreshAuth } from './authApi';
 
@@ -43,11 +43,15 @@ export const createRoom = (
   disconnectPolicy: DisconnectPolicy,
   ranked = false,
   maxRounds: MaxRounds = 13,
+  publicRoom = false,
 ): Promise<CreateRoomResponse> =>
-  api.post('/rooms', { username, playWithBot, disconnectPolicy, ranked, maxRounds }).then((r) => r.data);
+  api.post('/rooms', { username, playWithBot, disconnectPolicy, ranked, maxRounds, publicRoom }).then((r) => r.data);
 
 export const joinRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
   api.post(`/rooms/${code}/join`, { username }).then((r) => r.data);
+
+export const listPublicRooms = (): Promise<PublicRoomDto[]> =>
+  api.get('/rooms/public').then((r) => r.data);
 
 export const updateNickname = (
   roomCode: string,

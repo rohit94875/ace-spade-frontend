@@ -36,6 +36,7 @@ export default function GamePage() {
   const [nicknameDraft, setNicknameDraft] = useState(username ?? '');
   const [nicknameError, setNicknameError] = useState('');
   const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
 
   useEffect(() => {
@@ -43,6 +44,9 @@ export default function GamePage() {
   }, [username]);
 
   const isMyTurn = currentTurnPlayerId === playerId;
+  // Host can transfer if the original host leaves the lobby, so always derive it
+  // from the live hostPlayerId rather than the value captured when we joined.
+  const amHost = hostPlayerId ? hostPlayerId === playerId : isHost;
 
   // Open bid modal when it's my turn during bidding (not while paused)
   useEffect(() => {
@@ -174,6 +178,37 @@ export default function GamePage() {
     !paused &&
     (phase === 'BIDDING' || phase === 'PLAYING');
 
+  function buildInviteLink(): string {
+    const base = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`;
+    return `${window.location.origin}${base}?join=${roomCode}`;
+  }
+
+  async function handleShare() {
+    const url = buildInviteLink();
+    const shareData = {
+      title: 'Ace Spade',
+      text: `Join my Ace Spade room ${roomCode}`,
+      url,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      // user cancelled or share failed — fall back to copy
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMsg('Invite link copied!');
+    } catch {
+      setShareMsg(url);
+    }
+    setTimeout(() => setShareMsg(''), 2500);
+  }
+
   async function handleUpdateNickname() {
     const trimmed = nicknameDraft.trim();
     if (trimmed.length < 2) {
@@ -211,7 +246,7 @@ export default function GamePage() {
         round={round}
         maxRounds={maxRounds}
         username={username ?? ''}
-        isHost={isHost}
+        isHost={amHost}
         wsConnected={wsConnected}
         phase={phase}
         paused={paused}
@@ -259,6 +294,27 @@ export default function GamePage() {
             )}
           </AnimatePresence>
 
+          {/* Lobby invite / share */}
+          {phase === 'LOBBY' && (
+            <div style={styles.shareBar}>
+              <div style={styles.shareCodeRow}>
+                <span style={styles.shareLabel}>Room code</span>
+                <span style={styles.shareCode}>{roomCode}</span>
+              </div>
+              <motion.button
+                type="button"
+                style={styles.shareBtn}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleShare}
+              >
+                🔗 Share invite link
+              </motion.button>
+              {shareMsg && <p style={styles.shareMsg}>{shareMsg}</p>}
+              <p style={styles.shareSub}>Anyone who opens the link joins this room.</p>
+            </div>
+          )}
+
           {/* Lobby nickname */}
           {phase === 'LOBBY' && (
             <div style={styles.nicknameBar}>
@@ -285,7 +341,7 @@ export default function GamePage() {
           )}
 
           {/* Lobby start button */}
-          {phase === 'LOBBY' && isHost && players.length >= 2 && (
+          {phase === 'LOBBY' && amHost && players.length >= 2 && (
             <motion.button
               style={styles.startBtn}
               whileHover={{ scale: 1.05 }}
@@ -296,13 +352,13 @@ export default function GamePage() {
             </motion.button>
           )}
 
-          {phase === 'LOBBY' && isHost && players.length < 2 && (
+          {phase === 'LOBBY' && amHost && players.length < 2 && (
             <p style={styles.waitHint}>
               Share room code <strong>{roomCode}</strong> — need at least 2 players, or create a room with BOT Vitality
             </p>
           )}
 
-          {phase === 'LOBBY' && !isHost && (
+          {phase === 'LOBBY' && !amHost && (
             <p style={styles.waitHint}>Waiting for <strong>{players.find(p => p.id === hostPlayerId)?.username ?? 'host'}</strong> to start…</p>
           )}
 
@@ -479,6 +535,60 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
     color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer',
     alignSelf: 'center' as const, boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+  },
+  shareBar: {
+    alignSelf: 'center' as const,
+    width: '100%',
+    maxWidth: 420,
+    background: 'rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: '14px 16px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 10,
+  },
+  shareCodeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  shareLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  shareCode: {
+    color: '#f1c40f',
+    fontSize: 22,
+    fontWeight: 800,
+    letterSpacing: 3,
+    fontFamily: 'monospace',
+  },
+  shareBtn: {
+    padding: '12px 16px',
+    borderRadius: 10,
+    border: 'none',
+    cursor: 'pointer',
+    background: 'linear-gradient(135deg, #2980b9, #1a5276)',
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: 14,
+  },
+  shareMsg: {
+    margin: 0,
+    textAlign: 'center' as const,
+    color: '#74c69d',
+    fontSize: 12,
+    fontWeight: 600,
+    wordBreak: 'break-all' as const,
+  },
+  shareSub: {
+    margin: 0,
+    textAlign: 'center' as const,
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
   },
   nicknameBar: {
     alignSelf: 'center' as const,
