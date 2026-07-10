@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
+import { RANKED_MIN_ROUNDS, RANKED_MAX_ROUNDS } from '../constants/gameLength';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export default function LoginPage() {
     <div style={styles.page}>
       <motion.form style={styles.card} onSubmit={handleSubmit} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 style={styles.title}>Sign in</h1>
-        <p style={styles.sub}>Required for ranked play (10 or 13 rounds, MMR). Casual games work without an account — 5 rounds max.</p>
+        <p style={styles.sub}>Required for ranked play ({RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds, ranked tiers). Casual games work without an account — 5 rounds max.</p>
         <input style={styles.input} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input style={styles.input} type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error && <p style={styles.error}>{error}</p>}

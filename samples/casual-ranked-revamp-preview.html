@@ -141,7 +141,7 @@
       <h1>Casual vs Ranked Revamp — Design Preview</h1>
       <p>
         Casual games are capped at <strong>5 rounds</strong> to nudge players toward ranked.
-        Ranked keeps <strong>10 or 13 rounds</strong>, affects MMR, and shows tier badge after <strong>3 placement games</strong> (was 5).
+        Ranked keeps <strong>8–13 configurable rounds</strong>, affects MMR, and shows tier badge after <strong>3 placement games</strong> (was 5).
       </p>
       <div class="preview-controls">
         <button class="ctrl-btn active" data-screen="lobby-solo">Lobby · Solo casual</button>
@@ -179,12 +179,12 @@
                 <span class="badge badge-casual">Casual · 5 rounds max</span>
               </div>
               <div class="upsell">
-                <strong>Want a longer game?</strong> Sign in and play <strong>Ranked</strong> for 10 or 13 rounds with MMR on the line.
+                <strong>Want a longer game?</strong> Sign in and play <strong>Ranked</strong> for 8–13 rounds with MMR on the line.
               </div>
               <button class="btn btn-hero">Start solo game</button>
               <p class="panel-desc" style="margin-top:10px">No room code needed</p>
             </div>
-            <p class="rules">Casual: 5 rounds · Ranked: 10 or 13 rounds · bid tricks · trump ♠♣♥♦</p>
+            <p class="rules">Casual: 5 rounds · Ranked: 8–13 rounds · bid tricks · trump ♠♣♥♦</p>
           </div>
         </div>
       </div>
@@ -215,11 +215,19 @@
               <div class="options-box">
                 <label class="check-row">
                   <input type="checkbox" checked />
-                  <span><strong>Ranked match</strong> — login required · affects MMR · 10 or 13 rounds</span>
+                  <span><strong>Ranked match</strong> — login required · affects MMR · 8–13 rounds</span>
                 </label>
-                <p class="option-label">Ranked game length:</p>
-                <label class="radio-row"><input type="radio" name="len" /> <span>13 rounds (full ranked)</span></label>
-                <label class="radio-row"><input type="radio" name="len" checked /> <span>10 rounds (quick ranked)</span></label>
+                <label class="select-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px">
+                  <span>Ranked rounds</span>
+                  <select style="flex:1;max-width:180px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.25);color:#fff">
+                    <option>8 rounds (quick)</option>
+                    <option>9 rounds</option>
+                    <option>10 rounds</option>
+                    <option>11 rounds</option>
+                    <option>12 rounds</option>
+                    <option selected>13 rounds (full)</option>
+                  </select>
+                </label>
                 <p class="option-label" style="margin-top:10px">Casual rooms (unchecked above) are always 5 rounds — no MMR.</p>
               </div>
             </div>

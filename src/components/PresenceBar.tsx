@@ -36,10 +36,16 @@ export default function PresenceBar({ players, presence, myPlayerId }: Props) {
           const status = pr?.status ?? p.presenceStatus ?? (p.connected ? 'ONLINE' : 'DISCONNECTED');
           const isMe = p.id === myPlayerId;
           const graceExpires = pr?.graceExpiresAt ?? p.graceExpiresAt;
+          const turnTimeoutAt = pr?.turnTimeoutAt;
+          const autoPlayCount = pr?.autoPlayCount ?? p.autoPlayCount ?? 0;
 
           let detail = 'Online';
           let color = '#2ecc71';
-          if (status === 'GRACE' && graceExpires) {
+          if (status === 'AWAY') {
+            // Away but not disruptive; if it's their turn we show the auto-play countdown.
+            detail = turnTimeoutAt ? `Away · auto in ${formatCountdown(turnTimeoutAt)}` : 'Away';
+            color = turnTimeoutAt ? '#e67e22' : '#95a5a6';
+          } else if (status === 'GRACE' && graceExpires) {
             detail = formatCountdown(graceExpires);
             color = '#e67e22';
           } else if (status === 'PAUSED') {
@@ -60,6 +66,11 @@ export default function PresenceBar({ players, presence, myPlayerId }: Props) {
                 {p.username}{isMe ? ' (you)' : ''}
               </span>
               <span style={{ ...styles.status, color }}>{detail}</span>
+              {autoPlayCount > 0 && (
+                <span style={styles.autoBadge} title="Turns auto-played while away">
+                  auto ×{autoPlayCount}
+                </span>
+              )}
             </div>
           );
         })}
@@ -114,4 +125,13 @@ const styles: Record<string, React.CSSProperties> = {
   dot: { width: 7, height: 7, borderRadius: '50%' },
   name: { color: '#fff', fontWeight: 600 },
   status: { fontSize: 11, fontWeight: 600 },
+  autoBadge: {
+    fontSize: 10,
+    fontWeight: 800,
+    color: '#fff',
+    background: '#e74c3c',
+    borderRadius: 8,
+    padding: '1px 6px',
+    letterSpacing: 0.3,
+  },
 };

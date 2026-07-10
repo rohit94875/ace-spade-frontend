@@ -378,6 +378,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               connected: pr.connected,
               graceExpiresAt: pr.graceExpiresAt,
               presenceStatus: pr.status,
+              autoPlayCount: pr.autoPlayCount ?? p.autoPlayCount,
             };
           }),
         });

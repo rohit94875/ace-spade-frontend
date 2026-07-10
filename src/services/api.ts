@@ -49,6 +49,15 @@ export const createRoom = (
 export const joinRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
   api.post(`/rooms/${code}/join`, { username }).then((r) => r.data);
 
+export const updateNickname = (
+  roomCode: string,
+  sessionToken: string,
+  nickname: string,
+): Promise<{ nickname: string }> =>
+  api.patch(`/rooms/${roomCode}/nickname`, { nickname }, {
+    headers: { 'X-Session-Token': sessionToken },
+  }).then((r) => r.data);
+
 export const getRoom = (code: string) =>
   api.get(`/rooms/${code}`).then((r) => r.data);
 

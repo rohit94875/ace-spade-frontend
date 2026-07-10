@@ -37,9 +37,10 @@ export interface PlayerDto {
   graceExpiresAt?: number | null;
   lastSeenAt?: number;
   presenceStatus?: string;
+  autoPlayCount?: number;
 }
 
-export type PresenceStatus = 'ONLINE' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
+export type PresenceStatus = 'ONLINE' | 'AWAY' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
 
 export interface PlayerPresenceDto {
   playerId: string;
@@ -49,6 +50,9 @@ export interface PlayerPresenceDto {
   graceExpiresAt?: number | null;
   lastSeenAt: number;
   status: PresenceStatus;
+  autoPlayCount?: number;
+  /** Epoch millis when this away player's current turn will be auto-played. */
+  turnTimeoutAt?: number | null;
 }
 
 export interface ChatMessageDto {

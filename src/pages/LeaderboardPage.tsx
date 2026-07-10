@@ -26,7 +26,7 @@ export default function LeaderboardPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <h1 style={styles.title}>Global Ranked Leaderboard</h1>
-        <p style={styles.sub}>Season 1 · One global pool · Tier shown after 3 placement games · Casual (5 rounds) does not affect MMR</p>
+        <p style={styles.sub}>Season 1 · One global pool · Tier shown after 3 placement games · Casual (5 rounds) does not affect your rank</p>
 
         {loading ? (
           <p style={styles.muted}>Loading…</p>
@@ -39,7 +39,6 @@ export default function LeaderboardPage() {
                 <th style={styles.th}>#</th>
                 <th style={styles.th}>Player</th>
                 <th style={styles.th}>Tier</th>
-                <th style={styles.th}>MMR</th>
                 <th style={styles.th}>Games</th>
               </tr>
             </thead>
@@ -49,7 +48,6 @@ export default function LeaderboardPage() {
                   <td style={styles.td}>{e.rank}</td>
                   <td style={styles.td}>{e.username}</td>
                   <td style={{ ...styles.td, color: TIER_COLORS[e.tier] ?? '#fff', fontWeight: 600 }}>{e.tier}</td>
-                  <td style={styles.td}>{e.mmr.toFixed(1)}</td>
                   <td style={styles.td}>{e.gamesPlayed}</td>
                 </tr>
               ))}

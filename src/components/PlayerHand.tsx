@@ -62,9 +62,27 @@ export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTri
   }
 
   const showHandControls = phase === 'BIDDING' || phase === 'PLAYING';
+  const highlightTurn = isMyTurn && (phase === 'BIDDING' || phase === 'PLAYING');
 
   return (
-    <div style={styles.wrapper}>
+    <motion.div
+      style={styles.wrapper}
+      animate={highlightTurn
+        ? {
+            boxShadow: [
+              '0 0 0 2px rgba(241,196,15,0.55), 0 0 18px 2px rgba(241,196,15,0.35)',
+              '0 0 0 3px rgba(241,196,15,0.9), 0 0 30px 6px rgba(241,196,15,0.55)',
+              '0 0 0 2px rgba(241,196,15,0.55), 0 0 18px 2px rgba(241,196,15,0.35)',
+            ],
+          }
+        : { boxShadow: '0 0 0 0 rgba(0,0,0,0)' }}
+      transition={highlightTurn
+        ? { duration: 1.3, repeat: Infinity, ease: 'easeInOut' }
+        : { duration: 0.3 }}
+    >
+      {highlightTurn && (
+        <div style={styles.turnPill}>▶ Your turn {phase === 'BIDDING' ? 'to bid' : 'to play'}</div>
+      )}
       {showHandControls && (
         <div style={styles.toolbar}>
           <HandSortToggle compact />
@@ -116,7 +134,7 @@ export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTri
           })}
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -134,6 +152,17 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: 10,
+    position: 'relative',
+  },
+  turnPill: {
+    alignSelf: 'center',
+    background: 'linear-gradient(135deg, #f1c40f, #e67e22)',
+    color: '#1a1a1a',
+    fontWeight: 800,
+    fontSize: 13,
+    padding: '4px 14px',
+    borderRadius: 20,
+    boxShadow: '0 2px 10px rgba(241,196,15,0.4)',
   },
   handRow: {
     display: 'flex',
