@@ -88,19 +88,23 @@ export default function RoundSummary({ data, players, roundHistory, onDismiss }:
 
         {data.gameOver && data.ratingUpdates && Object.keys(data.ratingUpdates).length > 0 && (
           <div style={styles.ratingBox}>
-            <p style={styles.historyTitle}>Ranked rating changes</p>
+            <p style={styles.historyTitle}>Ranked results</p>
             {players.map((p) => {
               const delta = data.ratingUpdates?.[p.id];
               if (!delta) return null;
-              const sign = delta.ratingDelta >= 0 ? '+' : '';
+              const up = delta.ratingDelta >= 0;
               return (
                 <div key={p.id} style={styles.ratingRow}>
                   <span>{p.username}</span>
-                  <span>{delta.ratingBefore.toFixed(1)} → {delta.ratingAfter.toFixed(1)}</span>
-                  <span style={{ color: delta.ratingDelta >= 0 ? '#74c69d' : '#e74c3c', fontWeight: 700 }}>
-                    {sign}{delta.ratingDelta.toFixed(1)}
+                  <span
+                    style={{ color: up ? '#74c69d' : '#e74c3c', fontWeight: 700 }}
+                    title={up ? 'Rank up' : 'Rank down'}
+                  >
+                    {up ? '▲ Rank up' : '▼ Rank down'}
                   </span>
-                  {delta.tier && <span style={{ color: '#f1c40f' }}>{delta.tier}</span>}
+                  {delta.tier
+                    ? <span style={{ color: '#f1c40f' }}>{delta.tier}</span>
+                    : <span style={{ color: 'rgba(255,255,255,0.5)' }}>Placement</span>}
                 </div>
               );
             })}

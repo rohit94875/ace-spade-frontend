@@ -6,11 +6,12 @@ interface Props {
   players: PlayerDto[];
   scores: Record<string, number>;
   round: number;
+  maxRounds: number;
   phase: string | null;
   roundHistory: RoundHistoryEntry[];
 }
 
-export default function ScorePanel({ players, scores, round, phase, roundHistory }: Props) {
+export default function ScorePanel({ players, scores, round, maxRounds, phase, roundHistory }: Props) {
   const [showHistory, setShowHistory] = useState(false);
 
   const sorted = [...players].sort(
@@ -22,7 +23,7 @@ export default function ScorePanel({ players, scores, round, phase, roundHistory
       {/* Header */}
       <div style={styles.header}>
         <span style={styles.title}>Scoreboard</span>
-        <span style={styles.round}>Round {round}/13</span>
+        <span style={styles.round}>Round {round}/{maxRounds}</span>
       </div>
 
       <div style={styles.phaseRow}>

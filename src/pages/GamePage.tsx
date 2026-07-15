@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart } from '../services/websocket';
-import { getRoom } from '../services/api';
+import { getRoom, updateNickname } from '../services/api';
+import { saveNickname } from '../services/nicknameStorage';
+import { loadSession, saveSession } from '../services/sessionStorage';
 import type { RoomStateDto } from '../types/game';
+import { normalizeMaxRounds } from '../constants/gameLength';
 import PlayerHand from '../components/PlayerHand';
 import TrickArea from '../components/TrickArea';
 import OpponentHands from '../components/OpponentHands';
@@ -13,7 +16,6 @@ import BidModal from '../components/BidModal';
 import RoundSummary from '../components/RoundSummary';
 import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
-import ActivityFeed from '../components/ActivityFeed';
 import GameHeader from '../components/GameHeader';
 import { useDisplayStore } from '../store/displayStore';
 
@@ -25,15 +27,26 @@ export default function GamePage() {
     currentTurnPlayerId, hostPlayerId,
     roundHistory, lastTrick, roundSummary, errorMessage,
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
-    presence, graceSeconds, chatMessages, turnAlert,
-    handleGameEvent, setHand, dismissRoundSummary, clearError, clearTurnAlert, reset,
+    presence, graceSeconds, chatMessages,
+    handleGameEvent, setHand, dismissRoundSummary, clearError, reset,
     applySnapshot,
   } = useGameStore();
 
   const [showBidModal, setShowBidModal] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState(username ?? '');
+  const [nicknameError, setNicknameError] = useState('');
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
 
+  useEffect(() => {
+    setNicknameDraft(username ?? '');
+  }, [username]);
+
   const isMyTurn = currentTurnPlayerId === playerId;
+  // Host can transfer if the original host leaves the lobby, so always derive it
+  // from the live hostPlayerId rather than the value captured when we joined.
+  const amHost = hostPlayerId ? hostPlayerId === playerId : isHost;
 
   // Open bid modal when it's my turn during bidding (not while paused)
   useEffect(() => {
@@ -44,17 +57,14 @@ export default function GamePage() {
     }
   }, [phase, isMyTurn, paused]);
 
-  // Turn banner when it's your turn
+  // Haptic buzz + glow (handled in PlayerHand) when it becomes your turn.
   useEffect(() => {
     if (paused) return;
-    if (phase === 'BIDDING' && isMyTurn) {
-      useGameStore.setState({ turnAlert: 'Your turn to bid!' });
-    } else if (phase === 'PLAYING' && isMyTurn) {
-      useGameStore.setState({ turnAlert: 'Your turn to play!' });
-    } else if (!isMyTurn) {
-      clearTurnAlert();
+    const myTurnNow = isMyTurn && (phase === 'BIDDING' || phase === 'PLAYING');
+    if (myTurnNow && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate?.([120, 60, 120]);
     }
-  }, [phase, isMyTurn, paused, clearTurnAlert]);
+  }, [phase, isMyTurn, paused]);
 
   // Load room state (players, bot, lobby phase)
   useEffect(() => {
@@ -68,7 +78,7 @@ export default function GamePage() {
           currentTurnPlayerId: room.currentTurnPlayerId,
           hostPlayerId: room.hostPlayerId,
           round: room.round,
-          maxRounds: room.maxRounds === 10 ? 10 : 13,
+          maxRounds: normalizeMaxRounds(room.maxRounds),
           playWithBot: room.playWithBot ?? false,
           paused: room.paused ?? false,
           presence: room.presence ?? {},
@@ -76,6 +86,42 @@ export default function GamePage() {
         });
       })
       .catch(() => {});
+  }, [roomCode]);
+
+  // Mobile-friendly reconnect: when the tab is refocused or the network returns,
+  // re-sync room state so the player never has to manually refresh. The STOMP client
+  // auto-reconnects and the server re-sends a full snapshot on reconnect; this covers
+  // the case where the socket stayed open but events were missed while backgrounded.
+  useEffect(() => {
+    if (!roomCode) return;
+    const resync = () => {
+      if (document.visibilityState !== 'visible') return;
+      getRoom(roomCode)
+        .then((room: RoomStateDto) => {
+          useGameStore.setState({
+            phase: room.phase,
+            players: room.players,
+            scores: room.scores,
+            currentTurnPlayerId: room.currentTurnPlayerId,
+            hostPlayerId: room.hostPlayerId,
+            round: room.round,
+            maxRounds: normalizeMaxRounds(room.maxRounds),
+            playWithBot: room.playWithBot ?? false,
+            paused: room.paused ?? false,
+            presence: room.presence ?? {},
+            chatMessages: room.chatMessages ?? [],
+          });
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('visibilitychange', resync);
+    window.addEventListener('online', resync);
+    window.addEventListener('focus', resync);
+    return () => {
+      window.removeEventListener('visibilitychange', resync);
+      window.removeEventListener('online', resync);
+      window.removeEventListener('focus', resync);
+    };
   }, [roomCode]);
 
   // Connect to WebSocket on mount
@@ -132,6 +178,64 @@ export default function GamePage() {
     !paused &&
     (phase === 'BIDDING' || phase === 'PLAYING');
 
+  function buildInviteLink(): string {
+    const base = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`;
+    return `${window.location.origin}${base}?join=${roomCode}`;
+  }
+
+  async function handleShare() {
+    const url = buildInviteLink();
+    const shareData = {
+      title: 'Ace Spade',
+      text: `Join my Ace Spade room ${roomCode}`,
+      url,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      // user cancelled or share failed — fall back to copy
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMsg('Invite link copied!');
+    } catch {
+      setShareMsg(url);
+    }
+    setTimeout(() => setShareMsg(''), 2500);
+  }
+
+  async function handleUpdateNickname() {
+    const trimmed = nicknameDraft.trim();
+    if (trimmed.length < 2) {
+      setNicknameError('Nickname must be at least 2 characters');
+      return;
+    }
+    if (!roomCode || !sessionToken || trimmed === username) {
+      return;
+    }
+    setNicknameSaving(true);
+    setNicknameError('');
+    try {
+      const res = await updateNickname(roomCode, sessionToken, trimmed);
+      saveNickname(res.nickname);
+      useGameStore.setState({ username: res.nickname });
+      const stored = loadSession();
+      if (stored) {
+        saveSession({ ...stored, username: res.nickname });
+      }
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: string } })?.response?.data;
+      setNicknameError(typeof msg === 'string' ? msg : 'Could not update nickname');
+    } finally {
+      setNicknameSaving(false);
+    }
+  }
+
   return (
     <div style={{
       ...styles.page,
@@ -142,7 +246,7 @@ export default function GamePage() {
         round={round}
         maxRounds={maxRounds}
         username={username ?? ''}
-        isHost={isHost}
+        isHost={amHost}
         wsConnected={wsConnected}
         phase={phase}
         paused={paused}
@@ -190,8 +294,54 @@ export default function GamePage() {
             )}
           </AnimatePresence>
 
+          {/* Lobby invite / share */}
+          {phase === 'LOBBY' && (
+            <div style={styles.shareBar}>
+              <div style={styles.shareCodeRow}>
+                <span style={styles.shareLabel}>Room code</span>
+                <span style={styles.shareCode}>{roomCode}</span>
+              </div>
+              <motion.button
+                type="button"
+                style={styles.shareBtn}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleShare}
+              >
+                🔗 Share invite link
+              </motion.button>
+              {shareMsg && <p style={styles.shareMsg}>{shareMsg}</p>}
+              <p style={styles.shareSub}>Anyone who opens the link joins this room.</p>
+            </div>
+          )}
+
+          {/* Lobby nickname */}
+          {phase === 'LOBBY' && (
+            <div style={styles.nicknameBar}>
+              <p style={styles.nicknameLabel}>Your nickname (shown to everyone)</p>
+              <div style={styles.nicknameRow}>
+                <input
+                  style={styles.nicknameInput}
+                  value={nicknameDraft}
+                  maxLength={20}
+                  onChange={(e) => setNicknameDraft(e.target.value)}
+                />
+                <button
+                  type="button"
+                  style={styles.nicknameBtn}
+                  disabled={nicknameSaving || nicknameDraft.trim() === (username ?? '')}
+                  onClick={handleUpdateNickname}
+                >
+                  {nicknameSaving ? '…' : 'Save'}
+                </button>
+              </div>
+              {nicknameError && <p style={styles.nicknameError}>{nicknameError}</p>}
+              <p style={styles.nicknameSub}>Change anytime before the game starts.</p>
+            </div>
+          )}
+
           {/* Lobby start button */}
-          {phase === 'LOBBY' && isHost && players.length >= 2 && (
+          {phase === 'LOBBY' && amHost && players.length >= 2 && (
             <motion.button
               style={styles.startBtn}
               whileHover={{ scale: 1.05 }}
@@ -202,13 +352,13 @@ export default function GamePage() {
             </motion.button>
           )}
 
-          {phase === 'LOBBY' && isHost && players.length < 2 && (
+          {phase === 'LOBBY' && amHost && players.length < 2 && (
             <p style={styles.waitHint}>
               Share room code <strong>{roomCode}</strong> — need at least 2 players, or create a room with BOT Vitality
             </p>
           )}
 
-          {phase === 'LOBBY' && !isHost && (
+          {phase === 'LOBBY' && !amHost && (
             <p style={styles.waitHint}>Waiting for <strong>{players.find(p => p.id === hostPlayerId)?.username ?? 'host'}</strong> to start…</p>
           )}
 
@@ -235,6 +385,7 @@ export default function GamePage() {
             players={players}
             scores={scores}
             round={round}
+            maxRounds={maxRounds}
             phase={phase}
             roundHistory={roundHistory}
           />
@@ -251,10 +402,19 @@ export default function GamePage() {
         </div>
       </div>
 
-      <ActivityFeed
-        turnAlert={turnAlert}
-        onDismissTurn={clearTurnAlert}
-      />
+      {/* Reconnecting indicator — shown when the socket drops mid-game */}
+      <AnimatePresence>
+        {!wsConnected && phase !== 'LOBBY' && phase !== 'GAME_END' && (
+          <motion.div
+            style={styles.reconnectToast}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+          >
+            <span style={styles.reconnectDot} /> Reconnecting…
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modals */}
       {showBidModal && phase === 'BIDDING' && isMyTurn && (
@@ -376,6 +536,115 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer',
     alignSelf: 'center' as const, boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
   },
+  shareBar: {
+    alignSelf: 'center' as const,
+    width: '100%',
+    maxWidth: 420,
+    background: 'rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: '14px 16px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 10,
+  },
+  shareCodeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  shareLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  shareCode: {
+    color: '#f1c40f',
+    fontSize: 22,
+    fontWeight: 800,
+    letterSpacing: 3,
+    fontFamily: 'monospace',
+  },
+  shareBtn: {
+    padding: '12px 16px',
+    borderRadius: 10,
+    border: 'none',
+    cursor: 'pointer',
+    background: 'linear-gradient(135deg, #2980b9, #1a5276)',
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: 14,
+  },
+  shareMsg: {
+    margin: 0,
+    textAlign: 'center' as const,
+    color: '#74c69d',
+    fontSize: 12,
+    fontWeight: 600,
+    wordBreak: 'break-all' as const,
+  },
+  shareSub: {
+    margin: 0,
+    textAlign: 'center' as const,
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+  },
+  nicknameBar: {
+    alignSelf: 'center' as const,
+    width: '100%',
+    maxWidth: 420,
+    background: 'rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: '14px 16px',
+    marginBottom: 4,
+  },
+  nicknameLabel: {
+    margin: '0 0 8px',
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontWeight: 600,
+    textAlign: 'center' as const,
+  },
+  nicknameRow: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+  },
+  nicknameInput: {
+    flex: 1,
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#fff',
+    fontSize: 14,
+    outline: 'none',
+  },
+  nicknameBtn: {
+    padding: '10px 14px',
+    borderRadius: 10,
+    border: 'none',
+    background: 'linear-gradient(135deg, #2980b9, #1a5276)',
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    minWidth: 64,
+  },
+  nicknameError: {
+    margin: '8px 0 0',
+    color: '#ff7b7b',
+    fontSize: 12,
+    textAlign: 'center' as const,
+  },
+  nicknameSub: {
+    margin: '8px 0 0',
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    textAlign: 'center' as const,
+  },
   waitHint: {
     color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center' as const,
     padding: '12px 0',
@@ -389,5 +658,15 @@ const styles: Record<string, React.CSSProperties> = {
   },
   closeToast: {
     background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16,
+  },
+  reconnectToast: {
+    position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+    background: 'rgba(30,30,30,0.95)', color: '#f1c40f', padding: '10px 18px', borderRadius: 12,
+    fontSize: 13, fontWeight: 700, display: 'flex', gap: 10, alignItems: 'center',
+    zIndex: 300, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', border: '1px solid rgba(241,196,15,0.4)',
+  },
+  reconnectDot: {
+    width: 8, height: 8, borderRadius: '50%', background: '#f1c40f',
+    boxShadow: '0 0 8px #f1c40f',
   },
 };

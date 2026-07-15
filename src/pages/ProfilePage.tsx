@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { getMyHistory } from '../services/authApi';
 import type { MatchHistoryEntry } from '../types/auth';
+import { RANKED_MIN_ROUNDS, RANKED_MAX_ROUNDS } from '../constants/gameLength';
 
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
@@ -42,10 +43,6 @@ export default function ProfilePage() {
 
         <div style={styles.statGrid}>
           <div style={styles.stat}>
-            <span style={styles.statLabel}>MMR</span>
-            <span style={styles.statValue}>{user.mmr.toFixed(1)}</span>
-          </div>
-          <div style={styles.stat}>
             <span style={styles.statLabel}>Tier</span>
             <span style={styles.statValue}>
               {user.tier ?? (placementLeft > 0 ? `Placement (${user.placementGames}/${user.placementRequired})` : '—')}
@@ -63,9 +60,13 @@ export default function ProfilePage() {
 
         {!user.placementComplete && (
           <p style={styles.placementNote}>
-            Play {placementLeft} more ranked game{placementLeft === 1 ? '' : 's'} to reveal your tier badge. MMR is always visible.
+            Play {placementLeft} more ranked game{placementLeft === 1 ? '' : 's'} to reveal your tier badge (after {user.placementRequired} placement games).
           </p>
         )}
+
+        <p style={styles.casualNote}>
+          Casual games (5 rounds) don&apos;t affect your rank. Create a ranked room from the lobby ({RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds) for longer games and leaderboard progress.
+        </p>
 
         <h2 style={styles.sectionTitle}>Ranked match history</h2>
         {history.length === 0 ? (
@@ -77,8 +78,11 @@ export default function ProfilePage() {
                 <span>{h.won ? '🏆' : '•'} Room {h.roomCode}</span>
                 <span>{h.score} pts</span>
                 {h.ratingDelta != null && (
-                  <span style={{ color: h.ratingDelta >= 0 ? '#74c69d' : '#e74c3c' }}>
-                    {h.ratingDelta >= 0 ? '+' : ''}{h.ratingDelta.toFixed(1)} MMR
+                  <span
+                    style={{ color: h.ratingDelta >= 0 ? '#74c69d' : '#e74c3c', fontWeight: 700 }}
+                    title={h.ratingDelta >= 0 ? 'Rank up' : 'Rank down'}
+                  >
+                    {h.ratingDelta >= 0 ? '▲' : '▼'}
                   </span>
                 )}
               </div>
@@ -106,7 +110,8 @@ const styles: Record<string, React.CSSProperties> = {
   stat: { background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: 12 },
   statLabel: { display: 'block', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 4 },
   statValue: { color: '#fff', fontWeight: 700, fontSize: 16 },
-  placementNote: { fontSize: 12, color: '#f1c40f', marginBottom: 16 },
+  placementNote: { fontSize: 12, color: '#f1c40f', marginBottom: 12 },
+  casualNote: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, lineHeight: 1.45 },
   sectionTitle: { color: '#fff', fontSize: 16, margin: '8px 0 12px' },
   muted: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
   historyList: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 },
