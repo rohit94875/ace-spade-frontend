@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import {
-  Card, GamePhase, MaxRounds, PlayerDto, RoomStateDto, TrickCard,
+  Card, GamePhase, PlayerDto, RoomStateDto, TrickCard,
   TrickEndedPayload, RoundEndedPayload, GameEvent,
   ChatMessageDto, PlayerPresenceDto, SessionResumeResponse,
 } from '../types/game';
+import { normalizeMaxRounds, CASUAL_MAX_ROUNDS, type MaxRounds } from '../constants/gameLength';
 import { saveSession, clearSession, StoredSession } from '../services/sessionStorage';
 
 export interface RoundHistoryEntry {
@@ -93,7 +94,7 @@ const initialState = {
   isHost: false,
   phase: null as GamePhase | null,
   round: 0,
-  maxRounds: 13 as MaxRounds,
+  maxRounds: CASUAL_MAX_ROUNDS as MaxRounds,
   players: [] as PlayerDto[],
   hand: [] as Card[],
   currentTrick: [] as TrickCard[],
@@ -127,7 +128,7 @@ function applyRoomState(
     currentTurnPlayerId: room.currentTurnPlayerId,
     hostPlayerId: room.hostPlayerId,
     round: room.round,
-    maxRounds: room.maxRounds === 10 ? 10 : 13,
+    maxRounds: normalizeMaxRounds(room.maxRounds),
     playWithBot: room.playWithBot ?? false,
     ranked: room.ranked ?? false,
     paused: room.paused ?? false,
@@ -377,6 +378,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               connected: pr.connected,
               graceExpiresAt: pr.graceExpiresAt,
               presenceStatus: pr.status,
+              autoPlayCount: pr.autoPlayCount ?? p.autoPlayCount,
             };
           }),
         });

@@ -1,5 +1,7 @@
 export type DisconnectPolicy = 'FORFEIT_WIN' | 'BOT_TAKEOVER';
-export type MaxRounds = 10 | 13;
+
+import type { MaxRounds } from '../constants/gameLength';
+export type { MaxRounds };
 
 export type Suit = 'SPADES' | 'CLUBS' | 'HEARTS' | 'DIAMONDS';
 export type Rank =
@@ -35,9 +37,10 @@ export interface PlayerDto {
   graceExpiresAt?: number | null;
   lastSeenAt?: number;
   presenceStatus?: string;
+  autoPlayCount?: number;
 }
 
-export type PresenceStatus = 'ONLINE' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
+export type PresenceStatus = 'ONLINE' | 'AWAY' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
 
 export interface PlayerPresenceDto {
   playerId: string;
@@ -47,6 +50,9 @@ export interface PlayerPresenceDto {
   graceExpiresAt?: number | null;
   lastSeenAt: number;
   status: PresenceStatus;
+  autoPlayCount?: number;
+  /** Epoch millis when this away player's current turn will be auto-played. */
+  turnTimeoutAt?: number | null;
 }
 
 export interface ChatMessageDto {
@@ -55,6 +61,16 @@ export interface ChatMessageDto {
   username: string;
   text: string;
   sentAt: number;
+}
+
+export interface PublicRoomDto {
+  roomCode: string;
+  hostUsername: string;
+  playerCount: number;
+  maxPlayers: number;
+  ranked: boolean;
+  maxRounds: number;
+  playWithBot: boolean;
 }
 
 export interface SessionResumeResponse {
