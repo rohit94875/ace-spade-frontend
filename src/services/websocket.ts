@@ -133,6 +133,20 @@ export function sendStart(roomCode: string) {
   stompClient?.publish({ destination: `/app/game/${roomCode}/start`, body: '{}' });
 }
 
+export function sendReady(roomCode: string, ready: boolean) {
+  stompClient?.publish({
+    destination: `/app/game/${roomCode}/ready`,
+    body: JSON.stringify({ ready }),
+  });
+}
+
+export function sendVoteBot(roomCode: string, targetPlayerId: string) {
+  stompClient?.publish({
+    destination: `/app/game/${roomCode}/vote-bot`,
+    body: JSON.stringify({ targetPlayerId }),
+  });
+}
+
 export function sendBid(roomCode: string, amount: number) {
   stompClient?.publish({
     destination: `/app/game/${roomCode}/bid`,

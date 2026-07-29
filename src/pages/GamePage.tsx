@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
-import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart } from '../services/websocket';
+import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart, sendReady, sendVoteBot } from '../services/websocket';
 import { getRoom, updateNickname } from '../services/api';
 import { saveNickname } from '../services/nicknameStorage';
 import { loadSession, saveSession } from '../services/sessionStorage';
@@ -28,6 +28,7 @@ export default function GamePage() {
     roundHistory, lastTrick, roundSummary, errorMessage,
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
     presence, graceSeconds, chatMessages,
+    isSpectator, spectators, botVotes,
     handleGameEvent, setHand, dismissRoundSummary, clearError, reset,
     applySnapshot,
   } = useGameStore();
@@ -169,11 +170,16 @@ export default function GamePage() {
   if (!roomCode || !playerId) return null;
 
   const myPlayer = players.find((p) => p.id === playerId);
+  const humanPlayers = players.filter((p) => !p.bot);
+  const allHumansReady = humanPlayers.length > 0 && humanPlayers.every((p) => p.ready);
+  const skipReadyCheck = playWithBot && humanPlayers.length === 1;
+  const canStart = allHumansReady || skipReadyCheck;
   const isSoloBotGame =
     playWithBot &&
     players.length === 2 &&
     players.filter((p) => p.bot).length === 1;
   const canPause =
+    !isSpectator &&
     isSoloBotGame &&
     !paused &&
     (phase === 'BIDDING' || phase === 'PLAYING');
@@ -264,7 +270,15 @@ export default function GamePage() {
         presence={presence}
         myPlayerId={playerId}
         graceSeconds={graceSeconds}
+        botVotes={botVotes}
+        onVoteBot={isSpectator ? undefined : (targetId) => sendVoteBot(roomCode, targetId)}
       />
+
+      {isSpectator && (
+        <div style={styles.spectatorBanner}>
+          👁 Spectating · {spectators.length} watcher{spectators.length === 1 ? '' : 's'}
+        </div>
+      )}
 
       {/* Main layout */}
       <div style={styles.layout}>
@@ -340,15 +354,52 @@ export default function GamePage() {
             </div>
           )}
 
-          {/* Lobby start button */}
+          {/* Lobby ready + start */}
+          {phase === 'LOBBY' && !isSpectator && (
+            <div style={styles.readyBar}>
+              <div style={styles.readyList}>
+                {humanPlayers.map((p) => (
+                  <span
+                    key={p.id}
+                    style={{
+                      ...styles.readyChip,
+                      ...(p.ready ? styles.readyChipOn : {}),
+                    }}
+                  >
+                    {p.username}{p.id === playerId ? ' (you)' : ''}
+                    {p.ready ? ' ✓' : ' …'}
+                  </span>
+                ))}
+              </div>
+              {!amHost && (
+                <motion.button
+                  type="button"
+                  style={{
+                    ...styles.readyBtn,
+                    ...(myPlayer?.ready ? styles.readyBtnOn : {}),
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => sendReady(roomCode, !myPlayer?.ready)}
+                >
+                  {myPlayer?.ready ? 'Unready' : 'Ready up'}
+                </motion.button>
+              )}
+            </div>
+          )}
+
           {phase === 'LOBBY' && amHost && players.length >= 2 && (
             <motion.button
-              style={styles.startBtn}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => sendStart(roomCode)}
+              style={{
+                ...styles.startBtn,
+                ...(!canStart ? styles.startBtnDisabled : {}),
+              }}
+              whileHover={canStart ? { scale: 1.05 } : undefined}
+              whileTap={canStart ? { scale: 0.95 } : undefined}
+              disabled={!canStart}
+              onClick={() => canStart && sendStart(roomCode)}
             >
               🚀 Start Game ({players.length} players)
+              {!canStart && ' — waiting for ready'}
             </motion.button>
           )}
 
@@ -358,12 +409,16 @@ export default function GamePage() {
             </p>
           )}
 
-          {phase === 'LOBBY' && !amHost && (
-            <p style={styles.waitHint}>Waiting for <strong>{players.find(p => p.id === hostPlayerId)?.username ?? 'host'}</strong> to start…</p>
+          {phase === 'LOBBY' && !amHost && !isSpectator && (
+            <p style={styles.waitHint}>
+              {allHumansReady
+                ? <>Waiting for <strong>{players.find(p => p.id === hostPlayerId)?.username ?? 'host'}</strong> to start…</>
+                : 'Mark yourself ready — host can start once everyone is ready'}
+            </p>
           )}
 
-          {/* My hand */}
-          {phase !== 'LOBBY' && (
+          {/* My hand (players only) */}
+          {phase !== 'LOBBY' && !isSpectator && (
             <div>
               <p style={styles.handLabel}>
                 Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
@@ -395,7 +450,7 @@ export default function GamePage() {
                 roomCode={roomCode}
                 messages={chatMessages}
                 myPlayerId={playerId}
-                disabled={phase === 'GAME_END' || paused}
+                disabled={phase === 'GAME_END' || (paused && !isSpectator)}
               />
             </div>
           )}
@@ -417,7 +472,7 @@ export default function GamePage() {
       </AnimatePresence>
 
       {/* Modals */}
-      {showBidModal && phase === 'BIDDING' && isMyTurn && (
+      {showBidModal && phase === 'BIDDING' && isMyTurn && !isSpectator && (
         <BidModal
           round={round}
           roomCode={roomCode}
@@ -535,6 +590,62 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
     color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer',
     alignSelf: 'center' as const, boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+  },
+  startBtnDisabled: {
+    opacity: 0.45,
+    cursor: 'not-allowed',
+    background: 'rgba(45,106,79,0.5)',
+  },
+  readyBar: {
+    alignSelf: 'center' as const,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    maxWidth: 420,
+  },
+  readyList: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 8,
+    justifyContent: 'center',
+  },
+  readyChip: {
+    padding: '4px 10px',
+    borderRadius: 16,
+    fontSize: 12,
+    fontWeight: 600,
+    background: 'rgba(255,255,255,0.08)',
+    color: 'rgba(255,255,255,0.65)',
+    border: '1px solid rgba(255,255,255,0.12)',
+  },
+  readyChipOn: {
+    background: 'rgba(46,204,113,0.2)',
+    color: '#2ecc71',
+    borderColor: 'rgba(46,204,113,0.45)',
+  },
+  readyBtn: {
+    padding: '10px 20px',
+    borderRadius: 10,
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(255,255,255,0.1)',
+    color: '#fff',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  readyBtnOn: {
+    background: 'rgba(46,204,113,0.35)',
+    borderColor: '#2ecc71',
+  },
+  spectatorBanner: {
+    textAlign: 'center' as const,
+    padding: '6px 12px',
+    background: 'rgba(52,152,219,0.2)',
+    borderBottom: '1px solid rgba(52,152,219,0.35)',
+    color: '#85c1e9',
+    fontSize: 12,
+    fontWeight: 700,
   },
   shareBar: {
     alignSelf: 'center' as const,

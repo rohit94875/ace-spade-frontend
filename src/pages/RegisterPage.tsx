@@ -32,14 +32,14 @@ export default function RegisterPage() {
     <div style={styles.page}>
       <motion.form style={styles.card} onSubmit={handleSubmit} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 style={styles.title}>Create account</h1>
-        <p style={styles.sub}>Unlock ranked play ({RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds, ranked tiers). Casual stays free at 5 rounds without an account.</p>
+        <p style={styles.sub}>Create an account to play Ace Spade. Ranked games run {RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds.</p>
         <input style={styles.input} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input style={styles.input} placeholder="Username (3–20 chars)" value={username} maxLength={20} onChange={(e) => setUsername(e.target.value)} required />
         <input style={styles.input} type="password" placeholder="Password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.btn} type="submit" disabled={loading}>{loading ? 'Creating…' : 'Register'}</button>
         <p style={styles.linkRow}>Already have an account? <Link to="/login" style={styles.link}>Sign in</Link></p>
-        <Link to="/" style={styles.back}>← Back to lobby</Link>
+        <Link to="/login" style={styles.back}>Already have an account? Sign in</Link>
       </motion.form>
     </div>
   );

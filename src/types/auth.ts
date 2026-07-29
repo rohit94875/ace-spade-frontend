@@ -47,4 +47,11 @@ export interface MatchHistoryEntry {
   ratingAfter?: number;
   ratingDelta?: number;
   playedAt: string;
+  ranked?: boolean;
+  maxRounds?: number;
+  playerCount?: number;
+  placement?: number;
+  winnerUsername?: string;
+  winnerScore?: number;
+  opponents?: { username: string; score: number }[];
 }

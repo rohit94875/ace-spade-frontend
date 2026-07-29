@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { createRoom, joinRoom, listPublicRooms } from '../services/api';
+import { createRoom, joinRoom, listPublicRooms, spectateRoom } from '../services/api';
 import { loadNickname, saveNickname } from '../services/nicknameStorage';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
@@ -21,7 +21,6 @@ export default function LobbyPage() {
   const navigate = useNavigate();
   const setSession = useGameStore((s) => s.setSession);
   const authUser = useAuthStore((s) => s.user);
-  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
 
   const [mode, setMode] = useState<LobbyMode>('solo');
   const [nickname, setNickname] = useState('');
@@ -30,7 +29,7 @@ export default function LobbyPage() {
   const [loading, setLoading] = useState(false);
   const [playWithBot, setPlayWithBot] = useState(false);
   // Create rooms default to Ranked for logged-in players (guests fall back to casual).
-  const [ranked, setRanked] = useState<boolean>(() => isLoggedIn());
+  const [ranked, setRanked] = useState(true);
   const [disconnectPolicy, setDisconnectPolicy] = useState<DisconnectPolicy>('FORFEIT_WIN');
   const [rankedMaxRounds, setRankedMaxRounds] = useState<RankedMaxRounds>(DEFAULT_RANKED_MAX_ROUNDS);
   const [publicRoom, setPublicRoom] = useState(true);
@@ -94,10 +93,6 @@ export default function LobbyPage() {
   async function handleCreate() {
     const nickError = validateNickname(nickname);
     if (nickError) { setError(nickError); return; }
-    if (ranked && !isLoggedIn()) {
-      setError('Sign in required for ranked games');
-      return;
-    }
     if (ranked && playWithBot) {
       setError('Ranked games cannot include bots');
       return;
@@ -140,6 +135,27 @@ export default function LobbyPage() {
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: string } })?.response?.data;
       setError(typeof msg === 'string' ? msg : parseError(e, 'Failed to join room. Check the code and try again.'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function spectateWith(code: string, nick: string) {
+    const nickError = validateNickname(nick);
+    if (nickError) { setError(nickError); return; }
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) { setError('Enter a room code'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const trimmed = nick.trim();
+      const res = await spectateRoom(cleanCode, trimmed);
+      rememberNickname(trimmed);
+      setSession({ ...res, isHost: false, isSpectator: true });
+      navigate('/game');
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: string } })?.response?.data;
+      setError(typeof msg === 'string' ? msg : parseError(e, 'Failed to spectate. The game may have ended.'));
     } finally {
       setLoading(false);
     }
@@ -204,19 +220,18 @@ export default function LobbyPage() {
         <div style={styles.title}>
           <span style={{ fontSize: 44 }}>♠</span>
           <h1 style={styles.gameName}>Ace Spade</h1>
-          <p style={styles.subtitle}>Pick a nickname, then choose how to play</p>
+          <p style={styles.subtitle}>Signed in as {authUser?.username ?? 'player'} — pick how to play</p>
         </div>
 
         <div style={styles.authBar}>
-          {isLoggedIn() && authUser ? (
+          {authUser && (
             <>
               <span style={styles.mmrBadge}>
-                {authUser.tier ? authUser.tier : `Placing (${authUser.placementGames ?? 0}/${authUser.placementRequired ?? 3})`}
+                MMR {authUser.mmr.toFixed(1)}
+                {authUser.tier ? ` · ${authUser.tier}` : ` · Placing (${authUser.placementGames}/${authUser.placementRequired})`}
               </span>
               <Link to="/profile" style={styles.authLink}>Profile</Link>
             </>
-          ) : (
-            <Link to="/login" style={styles.authLink}>Sign in for ranked</Link>
           )}
           <Link to="/leaderboard" style={styles.authLink}>Leaderboard</Link>
         </div>
@@ -229,9 +244,7 @@ export default function LobbyPage() {
           onChange={(e) => setNickname(e.target.value)}
         />
         <p style={styles.nicknameHint}>
-          {isLoggedIn()
-            ? 'Change this anytime before joining — your account stays linked for ranked.'
-            : 'Pick any nickname — you can change it each time you join a room.'}
+          Table nickname — defaults to your account name. Change before joining a room.
         </p>
 
         <div style={styles.modeSwitch}>
@@ -258,8 +271,8 @@ export default function LobbyPage() {
               <span style={styles.casualBadge}>Casual · {CASUAL_MAX_ROUNDS} rounds max</span>
             </div>
             <div style={styles.upsellBox}>
-              <strong style={{ color: '#f1c40f' }}>Want a longer game?</strong>
-              {' '}Sign in and play <strong style={{ color: '#f1c40f' }}>Ranked</strong> for {RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds with your rank on the line.
+              <strong style={{ color: '#f1c40f' }}>Want ranked?</strong>
+              {' '}Create a room with <strong style={{ color: '#f1c40f' }}>Ranked</strong> for {RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds and MMR on the line.
             </div>
             <motion.button
               style={styles.heroBtn}
@@ -314,14 +327,20 @@ export default function LobbyPage() {
                     type="button"
                     style={styles.openRoomRow}
                     disabled={loading}
-                    onClick={() => joinWith(r.roomCode, nickname)}
+                    onClick={() => (r.spectatable ? spectateWith(r.roomCode, nickname) : joinWith(r.roomCode, nickname))}
                   >
                     <span style={styles.openRoomCode}>{r.roomCode}</span>
                     <span style={styles.openRoomMeta}>
-                      {r.ranked ? `Ranked · ${r.maxRounds}r` : `Casual · ${r.maxRounds}r`}
+                      {r.spectatable
+                        ? `Live · ${r.phase ?? 'in progress'}`
+                        : r.ranked ? `Ranked · ${r.maxRounds}r` : `Casual · ${r.maxRounds}r`}
                     </span>
                     <span style={styles.openRoomHost}>host {r.hostUsername}</span>
-                    <span style={styles.openRoomCount}>{r.playerCount}/{r.maxPlayers}</span>
+                    <span style={styles.openRoomCount}>
+                      {r.spectatable
+                        ? `${r.playerCount} playing · ${r.spectatorCount ?? 0} watching · Spectate`
+                        : `${r.playerCount}/${r.maxPlayers}`}
+                    </span>
                   </button>
                 ))}
               </div>

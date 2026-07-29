@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { DisconnectPolicy, MaxRounds, PublicRoomDto, SessionResumeResponse } from '../types/game';
-import { loadAuth } from './authStorage';
+import { loadAuth, saveAuth } from './authStorage';
 import { refresh as refreshAuth } from './authApi';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -14,6 +14,12 @@ api.interceptors.request.use(async (config) => {
     try {
       const res = await refreshAuth(stored.refreshToken);
       token = res.accessToken;
+      saveAuth({
+        accessToken: res.accessToken,
+        refreshToken: res.refreshToken,
+        expiresAt: Date.now() + res.expiresInMs,
+        user: res.user,
+      });
     } catch {
       return config;
     }
@@ -49,6 +55,12 @@ export const createRoom = (
 
 export const joinRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
   api.post(`/rooms/${code}/join`, { username }).then((r) => r.data);
+
+export const rejoinRoom = (code: string): Promise<JoinRoomResponse> =>
+  api.post(`/rooms/${code}/rejoin`, {}).then((r) => r.data);
+
+export const spectateRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
+  api.post(`/rooms/${code}/spectate`, { username }).then((r) => r.data);
 
 export const listPublicRooms = (): Promise<PublicRoomDto[]> =>
   api.get('/rooms/public').then((r) => r.data);
