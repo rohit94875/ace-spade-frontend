@@ -59,12 +59,12 @@ export default function ProfilePage() {
 
         {!user.placementComplete && (
           <p style={styles.placementNote}>
-            Play {placementLeft} more ranked game{placementLeft === 1 ? '' : 's'} to reveal your tier badge.
+            Play {placementLeft} more ranked game{placementLeft === 1 ? '' : 's'} to reveal your tier badge (after {user.placementRequired} placement games).
           </p>
         )}
 
         <p style={styles.casualNote}>
-          Ranked rooms ({RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds) affect MMR. Casual games do not.
+          Casual games (5 rounds) don&apos;t affect your rank. Create a ranked room from the lobby ({RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds) for longer games and leaderboard progress.
         </p>
 
         <h2 style={styles.sectionTitle}>Match history</h2>
