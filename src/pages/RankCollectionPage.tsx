@@ -74,7 +74,9 @@ export default function RankCollectionPage() {
             <div>
               <h1 style={styles.title}>Rank collection</h1>
               <p style={styles.sub}>
-                {isOwnProfile ? 'Your' : `${profile.username}'s`} tier progress and card face unlocks.
+                {isOwnProfile
+                  ? 'Tier progress and card back unlocks.'
+                  : `${profile.username}'s tier progress and card back unlocks.`}
               </p>
               {profile.tier && profile.placementComplete && (
                 <p style={{ ...styles.currentTier, color: tierColor(profile.tier) }}>
@@ -88,6 +90,7 @@ export default function RankCollectionPage() {
         <RankCatalog
           currentTier={profile.tier}
           placementComplete={profile.placementComplete}
+          viewingOwnProfile={isOwnProfile}
         />
       </div>
     </div>

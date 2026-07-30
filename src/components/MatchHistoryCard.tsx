@@ -32,7 +32,7 @@ export default function MatchHistoryCard({ match }: { match: MatchHistoryEntry }
 
       <div style={styles.statsRow}>
         <div style={styles.statBlock}>
-          <span style={styles.statLabel}>Your score</span>
+          <span style={styles.statLabel}>Score</span>
           <span style={styles.statValue}>{match.score}</span>
         </div>
         {match.placement != null && match.playerCount != null && match.playerCount > 0 && (

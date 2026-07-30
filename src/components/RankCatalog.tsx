@@ -11,6 +11,8 @@ import TierCardMini from './TierCardMini';
 interface Props {
   currentTier: string | null | undefined;
   placementComplete: boolean;
+  /** When false (viewing another player), use neutral labels. */
+  viewingOwnProfile?: boolean;
 }
 
 const FAMILY_ORDER: TierFamily[] = [
@@ -28,7 +30,7 @@ const FAMILY_LABELS: Record<TierFamily, string> = {
   elite: 'Elite',
 };
 
-export default function RankCatalog({ currentTier, placementComplete }: Props) {
+export default function RankCatalog({ currentTier, placementComplete, viewingOwnProfile = true }: Props) {
   const [expandedFamily, setExpandedFamily] = useState<TierFamily | 'all'>('all');
   const currentIdx = tierCatalogIndex(currentTier);
 
@@ -50,7 +52,8 @@ export default function RankCatalog({ currentTier, placementComplete }: Props) {
         <div>
           <h2 style={styles.title}>Rank collection</h2>
           <p style={styles.sub}>
-            Every tier tints your card backs and adds a rank glow in all games. Climb MMR to unlock new colors.
+            Every tier tints card backs and adds a rank glow in all games.
+            {viewingOwnProfile ? ' Climb MMR to unlock new colors.' : ''}
           </p>
         </div>
       </div>
@@ -99,7 +102,11 @@ export default function RankCatalog({ currentTier, placementComplete }: Props) {
                       ...(isFuture ? styles.rankCardFuture : {}),
                     }}
                   >
-                    {isCurrent && <span style={styles.currentTag}>Your rank</span>}
+                    {isCurrent && (
+                      <span style={styles.currentTag}>
+                        {viewingOwnProfile ? 'Your rank' : 'Current rank'}
+                      </span>
+                    )}
                     <div style={styles.rankTop}>
                       <TierBadge tier={t.name} size="md" dimmed={!isUnlocked && !isCurrent} />
                       <div style={styles.rankMeta}>
@@ -119,9 +126,9 @@ export default function RankCatalog({ currentTier, placementComplete }: Props) {
         );
       })}
 
-      {!placementComplete && (
+      {!placementComplete && viewingOwnProfile && (
         <p style={styles.placingNote}>
-          Finish placement games to reveal your rank badge and unlock your tier in the collection.
+          Finish placement games to reveal rank badge and unlock tiers in the collection.
         </p>
       )}
     </section>

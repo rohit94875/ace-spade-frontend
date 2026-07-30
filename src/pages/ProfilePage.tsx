@@ -147,7 +147,9 @@ export default function ProfilePage() {
           <div>
             <h2 style={styles.collectionTitle}>Rank collection</h2>
             <p style={styles.collectionSub}>
-              Browse all tier badges and card face colors you can unlock.
+              {isOwnProfile
+                ? 'Browse all tier badges and card back colors you can unlock.'
+                : `${profile.username}'s tier badges and card back colors.`}
             </p>
           </div>
           <Link
