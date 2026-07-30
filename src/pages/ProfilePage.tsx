@@ -106,8 +106,8 @@ export default function ProfilePage() {
         {profile.tier && (
           <p style={{ ...styles.tierLine, color: tierColor(profile.tier) }}>{profile.tier}</p>
         )}
-        {isOwnProfile && 'email' in profile && (
-          <p style={styles.email}>{profile.email}</p>
+        {isOwnProfile && currentUser && (
+          <p style={styles.email}>{currentUser.email}</p>
         )}
 
         <div style={styles.statGrid}>
