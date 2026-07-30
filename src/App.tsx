@@ -5,6 +5,7 @@ import GamePage from './pages/GamePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
+import RankCollectionPage from './pages/RankCollectionPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import { useGameStore } from './store/gameStore';
 import { useAuthStore } from './store/authStore';
@@ -86,10 +87,34 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route
+          path="/profile/:userId/ranks"
+          element={(
+            <RequireAuth>
+              <RankCollectionPage />
+            </RequireAuth>
+          )}
+        />
+        <Route
+          path="/profile/:userId"
+          element={(
+            <RequireAuth>
+              <ProfilePage />
+            </RequireAuth>
+          )}
+        />
+        <Route
           path="/profile"
           element={(
             <RequireAuth>
               <ProfilePage />
+            </RequireAuth>
+          )}
+        />
+        <Route
+          path="/rank-collection"
+          element={(
+            <RequireAuth>
+              <RankCollectionPage />
             </RequireAuth>
           )}
         />

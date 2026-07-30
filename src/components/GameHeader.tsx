@@ -2,12 +2,14 @@ import type { GamePhase, PlayerDto } from '../types/game';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import IncognitoToggle from './IncognitoToggle';
 import GameMenu from './GameMenu';
+import TierBadge from './TierBadge';
 
 interface Props {
   roomCode: string;
   round: number;
   maxRounds: number;
   username: string;
+  tier?: string | null;
   isHost: boolean;
   wsConnected: boolean;
   phase: GamePhase | null;
@@ -44,7 +46,7 @@ function buildStatus(props: Props): { text: string; highlight: boolean } {
 
 export default function GameHeader(props: Props) {
   const isMobile = useMediaQuery('(max-width: 640px)');
-  const { roomCode, round, maxRounds, username, isHost, canPause, onLeave, onPause } = props;
+  const { roomCode, round, maxRounds, username, tier, isHost, canPause, onLeave, onPause } = props;
   const status = buildStatus(props);
 
   if (isMobile) {
@@ -93,7 +95,8 @@ export default function GameHeader(props: Props) {
       <div style={styles.headerRight}>
         <IncognitoToggle />
         <span style={styles.playerLabel}>
-          {username} {isHost ? '👑' : ''}
+          <TierBadge tier={tier} size="sm" />
+          {' '}{username} {isHost ? '👑' : ''}
         </span>
         {canPause && (
           <button style={styles.pauseBtn} type="button" onClick={onPause}>
@@ -181,7 +184,7 @@ const styles: Record<string, React.CSSProperties> = {
   roomCode: { fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace', letterSpacing: 2 },
   headerCenter: { flex: 1, textAlign: 'center' },
   headerRight: { display: 'flex', alignItems: 'center', gap: 10 },
-  playerLabel: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
+  playerLabel: { fontSize: 14, color: 'rgba(255,255,255,0.8)', display: 'inline-flex', alignItems: 'center', gap: 6 },
   waiting: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontStyle: 'italic' },
   yourTurn: { color: '#f1c40f', fontWeight: 700, fontSize: 14 },
   leaveBtn: {

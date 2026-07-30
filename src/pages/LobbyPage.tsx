@@ -14,6 +14,7 @@ import {
   RANKED_ROUND_OPTIONS,
   type RankedMaxRounds,
 } from '../constants/gameLength';
+import TierBadge from '../components/TierBadge';
 
 type LobbyMode = 'solo' | 'join' | 'create';
 
@@ -227,7 +228,14 @@ export default function LobbyPage() {
           {authUser && (
             <>
               <span style={styles.mmrBadge}>
-                MMR {authUser.mmr.toFixed(1)}
+                <TierBadge
+                  tier={authUser.tier}
+                  placing={!authUser.placementComplete}
+                  placementGames={authUser.placementGames}
+                  placementRequired={authUser.placementRequired}
+                  size="sm"
+                />
+                {' '}MMR {authUser.mmr.toFixed(1)}
                 {authUser.tier ? ` · ${authUser.tier}` : ` · Placing (${authUser.placementGames}/${authUser.placementRequired})`}
               </span>
               <Link to="/profile" style={styles.authLink}>Profile</Link>
@@ -502,7 +510,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center',
     justifyContent: 'center', marginBottom: 14, fontSize: 12,
   },
-  mmrBadge: { color: '#f1c40f', fontWeight: 600 },
+  mmrBadge: { color: '#f1c40f', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 },
   authLink: { color: '#74c69d', textDecoration: 'none' },
   input: {
     padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',

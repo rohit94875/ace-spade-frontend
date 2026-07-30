@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { PlayerDto, PlayerPresenceDto } from '../types/game';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import TierBadge from './TierBadge';
 
 interface Props {
   players: PlayerDto[];
@@ -68,6 +69,7 @@ export default function PresenceBar({ players, presence, myPlayerId, botVotes, o
           return (
             <div key={p.id} style={styles.chip}>
               <span style={{ ...styles.dot, background: color }} />
+              {!p.bot && <TierBadge tier={p.tier} size="sm" />}
               <span style={styles.name}>
                 {p.username}{isMe ? ' (you)' : ''}
               </span>

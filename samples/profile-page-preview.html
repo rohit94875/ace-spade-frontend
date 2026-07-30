@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Profile Page Preview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0d2b1a;
+      color: #f0f0f0;
+      min-height: 100vh;
+    }
+
+    .preview-banner {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding: 10px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .preview-banner span { font-size: 12px; color: #8b9a8f; }
+    .preview-banner a { color: #74c69d; font-size: 12px; font-weight: 600; text-decoration: none; margin-left: 14px; }
+
+    .page {
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .card {
+      background: linear-gradient(135deg, #1b4332, #0d2b1a);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 880px;
+    }
+
+    .top-nav {
+      display: flex; gap: 16px; margin-bottom: 16px;
+      padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .top-nav a { color: #74c69d; font-size: 14px; font-weight: 600; text-decoration: none; }
+
+    .header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 4px;
+    }
+    .title-row { display: flex; align-items: center; gap: 14px; }
+    .title { color: #fff; font-size: 24px; font-weight: 800; margin: 0; }
+    .tier-line { font-size: 13px; font-weight: 700; color: #F1C40F; margin: 0 0 8px 86px; }
+    .email { color: rgba(255,255,255,0.5); font-size: 13px; margin: 4px 0 20px; }
+    .logout-btn {
+      background: transparent; border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.7); border-radius: 8px; padding: 6px 12px;
+      font-size: 12px; cursor: default;
+    }
+
+    .stat-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+    }
+    .stat {
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 12px;
+    }
+    .stat.highlight { border: 1px solid rgba(116,198,157,0.35); }
+    .stat-label { display: block; font-size: 11px; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+    .stat-value { color: #fff; font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+
+    .casual-note {
+      font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 16px; line-height: 1.45;
+    }
+
+    .collection-cta {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;
+      margin: 8px 0 20px; padding: 16px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(116,198,157,0.25);
+      background: rgba(116,198,157,0.06);
+    }
+    .collection-cta h2 { margin: 0 0 4px; font-size: 16px; font-weight: 800; color: #fff; }
+    .collection-cta p { margin: 0; font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.45; max-width: 420px; }
+    .collection-btn {
+      background: linear-gradient(135deg, #2d6a4f, #1b4332);
+      border: 1px solid rgba(116,198,157,0.45);
+      color: #fff; border-radius: 10px; padding: 10px 16px;
+      font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .collection-btn:hover { filter: brightness(1.08); }
+
+    .section-title { color: #fff; font-size: 16px; margin: 20px 0 12px; }
+
+    .history-card {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .history-top { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .history-result { font-weight: 800; font-size: 14px; }
+    .history-result.win { color: #2ecc71; }
+    .history-result.loss { color: #e74c3c; }
+    .history-meta { font-size: 11px; color: rgba(255,255,255,0.45); }
+
+    @media (max-width: 600px) {
+      .stat-grid { grid-template-columns: 1fr; }
+      .tier-line { padding-left: 0; margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-banner">
+    <span><strong style="color:#fff">Profile page preview</strong> — mock user: <em>CardShark42</em> · Gold 1 · MMR 1624.3</span>
+    <div>
+      <a href="rank-collection-preview.html" target="_blank">Rank collection</a>
+      <a href="tier-badge-preview.html">Tier badges</a>
+      <a href="rank-tier-cards-preview.html">Card colors</a>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="card">
+      <nav class="top-nav">
+        <a href="#">← Lobby</a>
+        <a href="#">Leaderboard</a>
+      </nav>
+
+      <div class="header">
+        <div>
+          <div class="title-row">
+            <span id="heroBadge"></span>
+            <h1 class="title">CardShark42</h1>
+          </div>
+          <p class="tier-line">Gold 1</p>
+        </div>
+        <button type="button" class="logout-btn">Log out</button>
+      </div>
+      <p class="email">cardshark@example.com</p>
+
+      <div class="stat-grid">
+        <div class="stat highlight">
+          <span class="stat-label">MMR</span>
+          <span class="stat-value">1624.3</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Tier</span>
+          <span class="stat-value" id="statBadge"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Games</span>
+          <span class="stat-value">47</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Season</span>
+          <span class="stat-value">1</span>
+        </div>
+      </div>
+
+      <p class="casual-note">
+        Casual games (5 rounds) don't affect your rank. Create a ranked room from the lobby (8–13 rounds) for longer games and leaderboard progress.
+      </p>
+
+      <section class="collection-cta">
+        <div>
+          <h2>Rank collection</h2>
+          <p>Browse all tier badges and card face colors. Opens in a separate window.</p>
+        </div>
+        <button type="button" class="collection-btn" onclick="window.open('rank-collection-preview.html', 'rankCollection', 'width=980,height=900,scrollbars=yes,resizable=yes')">
+          Open rank collection ↗
+        </button>
+      </section>
+
+      <h2 class="section-title">Match history</h2>
+      <div class="history-card">
+        <div class="history-top">
+          <span class="history-result win">Victory · +18.4 MMR</span>
+          <span class="history-meta">2 days ago</span>
+        </div>
+        <div class="history-meta">Room K7M2P9 · 13 rounds · 142 pts · 4 players</div>
+      </div>
+      <div class="history-card">
+        <div class="history-top">
+          <span class="history-result loss">Defeat · −12.1 MMR</span>
+          <span class="history-meta">5 days ago</span>
+        </div>
+        <div class="history-meta">Room B3X9Q1 · 10 rounds · 98 pts · 3 players</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CURRENT = 'Gold 1';
+    const TIERS = [
+      { name: 'Gold 1', color: '#F1C40F', mmr: '1600–1649', family: 'gold', div: 1 },
+    ];
+
+    function darken(hex, pct) {
+      const n = hex.replace('#', '');
+      return `rgb(${Math.max(0, parseInt(n.slice(0,2),16)*(1-pct))|0},${Math.max(0, parseInt(n.slice(2,4),16)*(1-pct))|0},${Math.max(0, parseInt(n.slice(4,6),16)*(1-pct))|0})`;
+    }
+    function lighten(hex, pct) {
+      const n = hex.replace('#', '');
+      return `rgb(${Math.min(255, parseInt(n.slice(0,2),16)+255*pct)|0},${Math.min(255, parseInt(n.slice(2,4),16)+255*pct)|0},${Math.min(255, parseInt(n.slice(4,6),16)+255*pct)|0})`;
+    }
+
+    function badgeSvg(tier, size) {
+      const color = tier.color;
+      const id = `p-${size}`;
+      const center = '<path d="M24 14 C20 18 16 20 16 24 C16 27 18 29 21 29 C22.5 29 23.5 28.5 24 27.5 C24.5 28.5 25.5 29 27 29 C30 29 32 27 32 24 C32 20 28 18 24 14 Z M24 30 L22 34 L26 34 Z" fill="rgba(0,0,0,0.55)"/>';
+      const wings = '<path d="M24 36 L27 40 L21 40 Z"/>';
+      const side = `<g stroke="${lighten(color,0.2)}" stroke-width="1.2" fill="none" opacity="0.7"><path d="M6 18 L2 22 L6 26"/><path d="M42 18 L46 22 L42 26"/></g>`;
+      return `<svg width="${size}" height="${size}" viewBox="0 0 48 48"><defs>
+        <linearGradient id="${id}f" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${lighten(color,0.22)}"/><stop offset="45%" stop-color="${color}"/><stop offset="100%" stop-color="${darken(color,0.28)}"/>
+        </linearGradient>
+        <linearGradient id="${id}r" x1="50%" y1="0%" x2="50%" y2="100%">
+          <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/><stop offset="100%" stop-color="rgba(0,0,0,0.45)"/>
+        </linearGradient>
+        <filter id="${id}g"><feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="${color}" flood-opacity="0.65"/></filter>
+      </defs>
+      <path d="M24 3 L42 11 L42 30 L24 45 L6 30 L6 11 Z" fill="url(#${id}f)" stroke="url(#${id}r)" stroke-width="1.5" filter="url(#${id}g)"/>
+      <path d="M24 8 L37 14 L37 28 L24 38 L11 28 L11 14 Z" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.75"/>
+      ${center}<g fill="${lighten(color,0.35)}" opacity="0.9">${wings}</g>${side}</svg>`;
+    }
+
+    const gold = TIERS[0];
+    document.getElementById('heroBadge').innerHTML = badgeSvg(gold, 72);
+    document.getElementById('statBadge').innerHTML = `${badgeSvg(gold, 22)} Gold 1`;
+  </script>
+</body>
+</html>

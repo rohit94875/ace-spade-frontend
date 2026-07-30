@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type {
-  AuthResponse, LeaderboardEntry, MatchHistoryEntry, UserProfile,
+  AuthResponse, LeaderboardEntry, MatchHistoryEntry, PublicUserProfile, UserProfile,
 } from '../types/auth';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -32,3 +32,9 @@ export const getMyHistory = (accessToken: string): Promise<MatchHistoryEntry[]> 
   api.get('/rankings/history/me', {
     headers: { Authorization: `Bearer ${accessToken}` },
   }).then((r) => r.data);
+
+export const getUserProfile = (userId: number): Promise<PublicUserProfile> =>
+  api.get(`/rankings/users/${userId}`).then((r) => r.data);
+
+export const getUserHistory = (userId: number): Promise<MatchHistoryEntry[]> =>
+  api.get(`/rankings/history/${userId}`).then((r) => r.data);

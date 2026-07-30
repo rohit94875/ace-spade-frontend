@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Tier Badge Preview (Valorant-style)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #070a08;
+      color: #f0f0f0;
+      min-height: 100vh;
+    }
+    .shell { max-width: 1100px; margin: 0 auto; padding: 20px 24px 48px; }
+    .meta {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(7,10,8,0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 14px 0 16px;
+      margin-bottom: 24px;
+    }
+    .meta h1 { margin: 0 0 6px; font-size: 20px; font-weight: 900; }
+    .meta p { margin: 0 0 12px; font-size: 13px; color: #8b9a8f; line-height: 1.5; max-width: 680px; }
+    .links { display: flex; gap: 14px; font-size: 13px; }
+    .links a { color: #74c69d; font-weight: 600; text-decoration: none; }
+    .links a:hover { text-decoration: underline; }
+
+    .size-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 28px;
+      padding: 24px;
+      margin-bottom: 24px;
+      background: linear-gradient(145deg, #122a1c, #0a1810);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+    }
+    .size-item { text-align: center; }
+    .size-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4); margin-top: 8px; text-transform: uppercase; letter-spacing: 0.8px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 14px;
+    }
+    .badge-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 16px 12px;
+      text-align: center;
+      transition: transform 0.15s ease;
+    }
+    .badge-card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.05); }
+    .badge-card svg { margin: 0 auto 10px; display: block; }
+    .badge-name { font-size: 12px; font-weight: 800; margin-bottom: 2px; }
+    .badge-mmr { font-size: 9px; color: rgba(255,255,255,0.4); font-family: ui-monospace, monospace; }
+
+    h2.section {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin: 28px 0 12px;
+    }
+
+    .in-game-demo {
+      margin-top: 28px;
+      padding: 20px;
+      border-radius: 16px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .in-game-demo h3 { margin: 0 0 14px; font-size: 14px; color: #74c69d; }
+    .presence-bar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 10px;
+      font-size: 12px;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 20px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #2ecc71; }
+    .chip-name { font-weight: 600; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="meta">
+      <h1>Tier badges — Valorant-style shields</h1>
+      <p>Angular rank shields with division chevrons, metallic rim, tier glow, and center spade. Used in profile, lobby, game header, presence bar, and leaderboard.</p>
+      <div class="links">
+        <a href="profile-page-preview.html">→ Profile page preview</a>
+        <a href="rank-collection-preview.html" target="_blank">→ Rank collection window</a>
+        <a href="rank-tier-cards-preview.html">→ Rank card colors</a>
+      </div>
+    </header>
+
+    <section class="size-row" id="sizes"></section>
+
+    <h2 class="section">All ranks</h2>
+    <div class="grid" id="allBadges"></div>
+
+    <h2 class="section">Special states</h2>
+    <div class="grid" id="specialBadges"></div>
+
+    <div class="in-game-demo">
+      <h3>In-game presence bar (example)</h3>
+      <div class="presence-bar" id="presenceDemo"></div>
+    </div>
+  </div>
+
+  <script>
+    const TIERS = [
+      { name: "Please Don't Play", color: '#616161', mmr: '< 1050', family: 'unranked' },
+      { name: 'Sand 3', color: '#E8D5B7', mmr: '1050–1099', family: 'sand', div: 3 },
+      { name: 'Sand 2', color: '#DCC29A', mmr: '1100–1149', family: 'sand', div: 2 },
+      { name: 'Sand 1', color: '#D2B48C', mmr: '1150–1199', family: 'sand', div: 1 },
+      { name: 'Bronze 3', color: '#D89A5B', mmr: '1200–1249', family: 'bronze', div: 3 },
+      { name: 'Bronze 2', color: '#D18444', mmr: '1250–1299', family: 'bronze', div: 2 },
+      { name: 'Bronze 1', color: '#CD7F32', mmr: '1300–1349', family: 'bronze', div: 1 },
+      { name: 'Silver 3', color: '#E2E2E2', mmr: '1350–1399', family: 'silver', div: 3 },
+      { name: 'Silver 2', color: '#D1D1D1', mmr: '1400–1449', family: 'silver', div: 2 },
+      { name: 'Silver 1', color: '#C0C0C0', mmr: '1450–1499', family: 'silver', div: 1 },
+      { name: 'Gold 3', color: '#F8DB72', mmr: '1500–1549', family: 'gold', div: 3 },
+      { name: 'Gold 2', color: '#F4CF3D', mmr: '1550–1599', family: 'gold', div: 2 },
+      { name: 'Gold 1', color: '#F1C40F', mmr: '1600–1649', family: 'gold', div: 1 },
+      { name: 'Platinum 3', color: '#C5F7F7', mmr: '1650–1699', family: 'platinum', div: 3 },
+      { name: 'Platinum 2', color: '#A4F1F1', mmr: '1700–1749', family: 'platinum', div: 2 },
+      { name: 'Platinum 1', color: '#81ECEC', mmr: '1750–1799', family: 'platinum', div: 1 },
+      { name: 'Diamond 3', color: '#CCC7FF', mmr: '1800–1849', family: 'diamond', div: 3 },
+      { name: 'Diamond 2', color: '#B6B0FF', mmr: '1850–1899', family: 'diamond', div: 2 },
+      { name: 'Diamond 1', color: '#A29BFE', mmr: '1900–1949', family: 'diamond', div: 1 },
+      { name: 'Master', color: '#8E44AD', mmr: '1950–1974', family: 'elite' },
+      { name: 'ACE KING', color: '#E74C3C', mmr: '1975–1999', family: 'elite' },
+      { name: 'Challenger', color: '#00CEC9', mmr: '2000+', family: 'elite' },
+    ];
+
+    function darken(hex, pct) {
+      const n = hex.replace('#', '');
+      const r = Math.max(0, parseInt(n.slice(0, 2), 16) * (1 - pct));
+      const g = Math.max(0, parseInt(n.slice(2, 4), 16) * (1 - pct));
+      const b = Math.max(0, parseInt(n.slice(4, 6), 16) * (1 - pct));
+      return `rgb(${r | 0},${g | 0},${b | 0})`;
+    }
+
+    function lighten(hex, pct) {
+      const n = hex.replace('#', '');
+      const r = Math.min(255, parseInt(n.slice(0, 2), 16) + 255 * pct);
+      const g = Math.min(255, parseInt(n.slice(2, 4), 16) + 255 * pct);
+      const b = Math.min(255, parseInt(n.slice(4, 6), 16) + 255 * pct);
+      return `rgb(${r | 0},${g | 0},${b | 0})`;
+    }
+
+    function badgeSvg(tier, opts = {}) {
+      const placing = opts.placing || false;
+      const size = opts.size || 48;
+      const color = placing ? '#5c6b7a' : tier.color;
+      const family = placing ? 'unranked' : tier.family;
+      const div = placing ? null : (tier.div || null);
+      const id = `b-${(tier.name || 'p').replace(/\s/g, '')}-${size}`;
+
+      let center = '';
+      if (placing) {
+        center = `
+          <path d="M14 18 L34 30" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+          <path d="M34 18 L14 30" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+          <text x="24" y="27" text-anchor="middle" font-size="9" font-weight="800" fill="rgba(255,255,255,0.7)">?</text>`;
+      } else if (family === 'unranked') {
+        center = '<path d="M24 16 L28 24 L24 32 L20 24 Z" fill="rgba(255,255,255,0.35)"/>';
+      } else if (family === 'elite') {
+        if (tier.name === 'Challenger') {
+          center = '<path d="M24 14 L27 22 L35 22 L28 27 L31 35 L24 30 L17 35 L20 27 L13 22 L21 22 Z" fill="rgba(255,255,255,0.9)"/>';
+        } else if (tier.name === 'ACE KING') {
+          center = '<text x="24" y="28" text-anchor="middle" font-size="14" font-weight="900" fill="rgba(255,255,255,0.95)">♠</text>';
+        } else {
+          center = '<path d="M24 13 L30 19 L28 29 L24 26 L20 29 L18 19 Z" fill="rgba(255,255,255,0.9)"/>';
+        }
+      } else {
+        center = '<path d="M24 14 C20 18 16 20 16 24 C16 27 18 29 21 29 C22.5 29 23.5 28.5 24 27.5 C24.5 28.5 25.5 29 27 29 C30 29 32 27 32 24 C32 20 28 18 24 14 Z M24 30 L22 34 L26 34 Z" fill="rgba(0,0,0,0.55)"/>';
+      }
+
+      let wings = '';
+      if (div === 3) wings = [18, 24, 30].map((cx) => `<path d="M${cx} 36 L${cx + 3} 40 L${cx - 3} 40 Z"/>`).join('');
+      else if (div === 2) wings = [21, 27].map((cx) => `<path d="M${cx} 36 L${cx + 3} 40 L${cx - 3} 40 Z"/>`).join('');
+      else if (div === 1) wings = '<path d="M24 36 L27 40 L21 40 Z"/>';
+
+      const sideWings = !placing && family !== 'unranked'
+        ? `<g stroke="${lighten(color, 0.2)}" stroke-width="1.2" fill="none" opacity="0.7">
+            <path d="M6 18 L2 22 L6 26"/><path d="M42 18 L46 22 L42 26"/>
+          </g>` : '';
+
+      return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="${id}-f" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${lighten(color, 0.22)}"/>
+            <stop offset="45%" stop-color="${color}"/>
+            <stop offset="100%" stop-color="${darken(color, 0.28)}"/>
+          </linearGradient>
+          <linearGradient id="${id}-r" x1="50%" y1="0%" x2="50%" y2="100%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
+            <stop offset="100%" stop-color="rgba(0,0,0,0.45)"/>
+          </linearGradient>
+          <filter id="${id}-g" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="${color}" flood-opacity="0.65"/>
+          </filter>
+        </defs>
+        <path d="M24 3 L42 11 L42 30 L24 45 L6 30 L6 11 Z" fill="url(#${id}-f)" stroke="url(#${id}-r)" stroke-width="1.5"
+          ${placing ? 'opacity="0.55"' : `filter="url(#${id}-g)"`}/>
+        <path d="M24 8 L37 14 L37 28 L24 38 L11 28 L11 14 Z" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.75"/>
+        ${center}
+        ${wings ? `<g fill="${lighten(color, 0.35)}" opacity="0.9">${wings}</g>` : ''}
+        ${sideWings}
+      </svg>`;
+    }
+
+    function cardHtml(tier, size) {
+      return `<div class="badge-card">
+        ${badgeSvg(tier, { size })}
+        <div class="badge-name" style="color:${tier.color}">${tier.name}</div>
+        <div class="badge-mmr">MMR ${tier.mmr}</div>
+      </div>`;
+    }
+
+    // Size showcase — Gold 1 at all sizes
+    const gold = TIERS.find((t) => t.name === 'Gold 1');
+    document.getElementById('sizes').innerHTML = [
+      { label: 'sm · 22px', size: 22 },
+      { label: 'md · 30px', size: 30 },
+      { label: 'lg · 56px', size: 56 },
+      { label: 'xl · 72px', size: 72 },
+    ].map((s) => `
+      <div class="size-item">
+        ${badgeSvg(gold, { size: s.size })}
+        <div class="size-label">${s.label}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('allBadges').innerHTML = TIERS.map((t) => cardHtml(t, 48)).join('');
+
+    document.getElementById('specialBadges').innerHTML = [
+      cardHtml({ name: 'Placing', color: '#5c6b7a', mmr: '0/5 games', family: 'unranked' }, 48).replace(
+        badgeSvg({ name: 'Placing', family: 'unranked', color: '#5c6b7a' }, { size: 48, placing: true }),
+        badgeSvg({ name: 'Placing', family: 'unranked', color: '#5c6b7a' }, { size: 48, placing: true })
+      ),
+    ].join('') + `
+      <div class="badge-card">
+        ${badgeSvg({ name: 'Placing', family: 'unranked', color: '#5c6b7a' }, { size: 48, placing: true })}
+        <div class="badge-name" style="color:#95a5a6">Placing</div>
+        <div class="badge-mmr">Before rank reveal</div>
+      </div>
+    `;
+
+    const demoPlayers = [
+      { name: 'You', tier: TIERS.find((t) => t.name === 'Gold 1') },
+      { name: 'Alex', tier: TIERS.find((t) => t.name === 'Platinum 2') },
+      { name: 'Sam', tier: TIERS.find((t) => t.name === 'Silver 1') },
+    ];
+    document.getElementById('presenceDemo').innerHTML = `
+      <span style="color:rgba(255,255,255,0.45);font-weight:700;font-size:11px">In game</span>
+      ${demoPlayers.map((p) => `
+        <span class="chip">
+          <span class="dot"></span>
+          ${badgeSvg(p.tier, { size: 22 })}
+          <span class="chip-name">${p.name}</span>
+        </span>
+      `).join('')}
+    `;
+  </script>
+</body>
+</html>

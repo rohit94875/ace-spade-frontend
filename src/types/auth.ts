@@ -11,6 +11,9 @@ export interface UserProfile {
   seasonId: number;
 }
 
+/** Public profile view — no email. */
+export type PublicUserProfile = Omit<UserProfile, 'email'>;
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;

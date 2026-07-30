@@ -39,6 +39,8 @@ export interface PlayerDto {
   presenceStatus?: string;
   autoPlayCount?: number;
   ready?: boolean;
+  /** Ranked tier badge after placement */
+  tier?: string | null;
 }
 
 export type PresenceStatus = 'ONLINE' | 'AWAY' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';

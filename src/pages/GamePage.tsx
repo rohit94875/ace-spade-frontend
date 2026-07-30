@@ -17,6 +17,8 @@ import RoundSummary from '../components/RoundSummary';
 import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
 import GameHeader from '../components/GameHeader';
+import TierBadge from '../components/TierBadge';
+import { useAuthStore } from '../store/authStore';
 import { useDisplayStore } from '../store/displayStore';
 
 export default function GamePage() {
@@ -39,6 +41,7 @@ export default function GamePage() {
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
+  const authUser = useAuthStore((s) => s.user);
 
   useEffect(() => {
     setNicknameDraft(username ?? '');
@@ -84,6 +87,8 @@ export default function GamePage() {
           paused: room.paused ?? false,
           presence: room.presence ?? {},
           chatMessages: room.chatMessages ?? [],
+          spectators: room.spectators ?? [],
+          botVotes: room.botVotes ?? {},
         });
       })
       .catch(() => {});
@@ -111,6 +116,8 @@ export default function GamePage() {
             paused: room.paused ?? false,
             presence: room.presence ?? {},
             chatMessages: room.chatMessages ?? [],
+            spectators: room.spectators ?? [],
+            botVotes: room.botVotes ?? {},
           });
         })
         .catch(() => {});
@@ -170,6 +177,7 @@ export default function GamePage() {
   if (!roomCode || !playerId) return null;
 
   const myPlayer = players.find((p) => p.id === playerId);
+  const myTier = myPlayer?.tier ?? authUser?.tier ?? null;
   const humanPlayers = players.filter((p) => !p.bot);
   const allHumansReady = humanPlayers.length > 0 && humanPlayers.every((p) => p.ready);
   const skipReadyCheck = playWithBot && humanPlayers.length === 1;
@@ -252,6 +260,7 @@ export default function GamePage() {
         round={round}
         maxRounds={maxRounds}
         username={username ?? ''}
+        tier={myTier}
         isHost={amHost}
         wsConnected={wsConnected}
         phase={phase}
@@ -274,9 +283,10 @@ export default function GamePage() {
         onVoteBot={isSpectator ? undefined : (targetId) => sendVoteBot(roomCode, targetId)}
       />
 
-      {isSpectator && (
+      {spectators.length > 0 && (
         <div style={styles.spectatorBanner}>
-          👁 Spectating · {spectators.length} watcher{spectators.length === 1 ? '' : 's'}
+          👁 {spectators.length} spectator{spectators.length === 1 ? '' : 's'}
+          {isSpectator ? ' · You are watching' : ''}
         </div>
       )}
 
@@ -366,7 +376,8 @@ export default function GamePage() {
                       ...(p.ready ? styles.readyChipOn : {}),
                     }}
                   >
-                    {p.username}{p.id === playerId ? ' (you)' : ''}
+                    {!p.bot && <TierBadge tier={p.tier} size="sm" />}
+                    {' '}{p.username}{p.id === playerId ? ' (you)' : ''}
                     {p.ready ? ' ✓' : ' …'}
                   </span>
                 ))}
@@ -424,8 +435,11 @@ export default function GamePage() {
           {/* My hand (players only) */}
           {phase !== 'LOBBY' && !isSpectator && (
             <div>
-              <p style={styles.handLabel}>
-                Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
+              <p style={{ ...styles.handLabel, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <TierBadge tier={myTier} size="sm" />
+                <span>
+                  Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
+                </span>
               </p>
               <PlayerHand
                 hand={hand}
@@ -616,6 +630,9 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
   },
   readyChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
     padding: '4px 10px',
     borderRadius: 16,
     fontSize: 12,

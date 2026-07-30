@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Rank Collection</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0a1f14;
+      color: #f0f0f0;
+      min-height: 100vh;
+    }
+
+    .window-chrome {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding: 12px 20px;
+    }
+    .chrome-row {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+      max-width: 1040px; margin: 0 auto;
+    }
+    .chrome-left { display: flex; align-items: center; gap: 14px; }
+    .dots { display: flex; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; }
+    .dot.y { background: #febc2e; }
+    .dot.g { background: #28c840; }
+    .window-title { font-size: 13px; font-weight: 700; color: #fff; }
+    .window-sub { font-size: 11px; color: #8b9a8f; margin-top: 2px; }
+    .chrome-links a {
+      color: #74c69d; font-size: 12px; font-weight: 600; text-decoration: none; margin-left: 14px;
+    }
+    .chrome-links a:hover { text-decoration: underline; }
+
+    .shell {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+
+    .hero {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+      margin-bottom: 20px;
+      padding: 20px 22px;
+      background: linear-gradient(135deg, #1b4332, #0d2b1a);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+    }
+    .hero-left { display: flex; align-items: center; gap: 16px; }
+    .hero h1 { margin: 0 0 4px; font-size: 22px; font-weight: 900; color: #fff; }
+    .hero p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.45; max-width: 520px; }
+    .hero-tier { font-size: 12px; font-weight: 800; color: #F1C40F; margin-top: 6px; }
+    .progress-pill {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(116,198,157,0.35);
+      border-radius: 12px;
+      padding: 12px 16px;
+      text-align: center;
+      min-width: 120px;
+    }
+    .progress-pill .num { font-size: 22px; font-weight: 900; color: #74c69d; }
+    .progress-pill .lbl { font-size: 10px; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px; }
+
+    .family-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+    .tab {
+      padding: 6px 12px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.25);
+      color: rgba(255,255,255,0.6);
+      font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .tab.on { background: rgba(116,198,157,0.15); border-color: rgba(116,198,157,0.4); color: #74c69d; }
+
+    .family-title {
+      margin: 0 0 10px; font-size: 11px; font-weight: 800;
+      letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.35);
+    }
+
+    .rank-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .rank-card {
+      background: rgba(0,0,0,0.32);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 14px;
+      position: relative;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .rank-card:hover:not(.locked) { transform: translateY(-2px); }
+    .rank-card.current {
+      border-color: rgba(116,198,157,0.6);
+      box-shadow: 0 0 24px rgba(116,198,157,0.15);
+      background: rgba(116,198,157,0.08);
+    }
+    .rank-card.future { opacity: 0.58; filter: grayscale(0.15); }
+    .rank-card.locked { opacity: 0.36; filter: grayscale(0.4); }
+
+    .current-tag {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 8px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+      color: #74c69d; background: rgba(116,198,157,0.18);
+      padding: 3px 7px; border-radius: 4px;
+    }
+    .unlocked-tag {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 8px; font-weight: 800; color: rgba(255,255,255,0.35);
+    }
+
+    .rank-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .rank-name { font-size: 13px; font-weight: 800; line-height: 1.2; }
+    .rank-mmr { font-size: 9px; font-family: ui-monospace, monospace; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+    .card-preview {
+      display: flex; align-items: center; gap: 10px;
+      padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .mini-card {
+      width: 40px; height: 56px; border-radius: 6px; position: relative; flex-shrink: 0;
+      overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .mini-card-inner {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .mini-card-corner {
+      position: absolute; top: 5px; left: 6px;
+      font-size: 8px; font-weight: 800; line-height: 1;
+    }
+    .card-hint { font-size: 9px; color: rgba(255,255,255,0.35); font-weight: 600; }
+
+    .legend {
+      margin-top: 8px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex; flex-wrap: wrap; gap: 16px;
+      font-size: 11px; color: rgba(255,255,255,0.5);
+    }
+    .legend span { display: flex; align-items: center; gap: 6px; }
+    .swatch {
+      width: 12px; height: 12px; border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .swatch.cur { background: rgba(116,198,157,0.25); border-color: #74c69d; }
+    .swatch.dim { opacity: 0.4; background: rgba(255,255,255,0.1); }
+  </style>
+</head>
+<body>
+  <header class="window-chrome">
+    <div class="chrome-row">
+      <div class="chrome-left">
+        <div class="dots" aria-hidden="true"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+        <div>
+          <div class="window-title">Rank collection</div>
+          <div class="window-sub">CardShark42 · Gold 1 · MMR 1624.3</div>
+        </div>
+      </div>
+      <nav class="chrome-links">
+        <a href="profile-page-preview.html">← Profile</a>
+        <a href="tier-badge-preview.html">Tier badges</a>
+        <a href="rank-tier-cards-preview.html">Card colors</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-left">
+        <span id="heroBadge"></span>
+        <div>
+          <h1>Rank collection</h1>
+          <p>Every tier unlocks a unique card face color in ranked games. Climb MMR to earn new faces and badges.</p>
+          <div class="hero-tier">Current rank: Gold 1</div>
+        </div>
+      </div>
+      <div class="progress-pill">
+        <div class="num" id="unlockedCount">—</div>
+        <div class="lbl">Tiers unlocked</div>
+      </div>
+    </section>
+
+    <div class="family-tabs" id="tabs"></div>
+    <div id="catalogBody"></div>
+
+    <div class="legend">
+      <span><span class="swatch cur"></span> Your current rank</span>
+      <span><span class="swatch" style="background:rgba(255,255,255,0.15)"></span> Unlocked (earned)</span>
+      <span><span class="swatch dim"></span> Locked / future tiers</span>
+    </div>
+  </main>
+
+  <script>
+    const CURRENT = 'Gold 1';
+    const TIERS = [
+      { name: "Please Don't Play", color: '#616161', mmr: '< 1050', family: 'unranked' },
+      { name: 'Sand 3', color: '#E8D5B7', mmr: '1050–1099', family: 'sand', div: 3 },
+      { name: 'Sand 2', color: '#DCC29A', mmr: '1100–1149', family: 'sand', div: 2 },
+      { name: 'Sand 1', color: '#D2B48C', mmr: '1150–1199', family: 'sand', div: 1 },
+      { name: 'Bronze 3', color: '#D89A5B', mmr: '1200–1249', family: 'bronze', div: 3 },
+      { name: 'Bronze 2', color: '#D18444', mmr: '1250–1299', family: 'bronze', div: 2 },
+      { name: 'Bronze 1', color: '#CD7F32', mmr: '1300–1349', family: 'bronze', div: 1 },
+      { name: 'Silver 3', color: '#E2E2E2', mmr: '1350–1399', family: 'silver', div: 3 },
+      { name: 'Silver 2', color: '#D1D1D1', mmr: '1400–1449', family: 'silver', div: 2 },
+      { name: 'Silver 1', color: '#C0C0C0', mmr: '1450–1499', family: 'silver', div: 1 },
+      { name: 'Gold 3', color: '#F8DB72', mmr: '1500–1549', family: 'gold', div: 3 },
+      { name: 'Gold 2', color: '#F4CF3D', mmr: '1550–1599', family: 'gold', div: 2 },
+      { name: 'Gold 1', color: '#F1C40F', mmr: '1600–1649', family: 'gold', div: 1 },
+      { name: 'Platinum 3', color: '#C5F7F7', mmr: '1650–1699', family: 'platinum', div: 3 },
+      { name: 'Platinum 2', color: '#A4F1F1', mmr: '1700–1749', family: 'platinum', div: 2 },
+      { name: 'Platinum 1', color: '#81ECEC', mmr: '1750–1799', family: 'platinum', div: 1 },
+      { name: 'Diamond 3', color: '#CCC7FF', mmr: '1800–1849', family: 'diamond', div: 3 },
+      { name: 'Diamond 2', color: '#B6B0FF', mmr: '1850–1899', family: 'diamond', div: 2 },
+      { name: 'Diamond 1', color: '#A29BFE', mmr: '1900–1949', family: 'diamond', div: 1 },
+      { name: 'Master', color: '#8E44AD', mmr: '1950–1974', family: 'elite' },
+      { name: 'ACE KING', color: '#E74C3C', mmr: '1975–1999', family: 'elite' },
+      { name: 'Challenger', color: '#00CEC9', mmr: '2000+', family: 'elite' },
+    ];
+
+    const FAMILIES = [
+      { id: 'all', label: 'All ranks' },
+      { id: 'sand', label: 'Sand' },
+      { id: 'bronze', label: 'Bronze' },
+      { id: 'silver', label: 'Silver' },
+      { id: 'gold', label: 'Gold' },
+      { id: 'platinum', label: 'Platinum' },
+      { id: 'diamond', label: 'Diamond' },
+      { id: 'elite', label: 'Elite' },
+    ];
+
+    const FAMILY_LABELS = {
+      unranked: 'Unranked', sand: 'Sand', bronze: 'Bronze', silver: 'Silver',
+      gold: 'Gold', platinum: 'Platinum', diamond: 'Diamond', elite: 'Elite',
+    };
+
+    let activeTab = 'all';
+    const currentIdx = TIERS.findIndex((t) => t.name === CURRENT);
+    document.getElementById('unlockedCount').textContent = String(currentIdx + 1);
+
+    function darken(hex, pct) {
+      const n = hex.replace('#', '');
+      return `rgb(${Math.max(0, parseInt(n.slice(0,2),16)*(1-pct))|0},${Math.max(0, parseInt(n.slice(2,4),16)*(1-pct))|0},${Math.max(0, parseInt(n.slice(4,6),16)*(1-pct))|0})`;
+    }
+    function lighten(hex, pct) {
+      const n = hex.replace('#', '');
+      return `rgb(${Math.min(255, parseInt(n.slice(0,2),16)+255*pct)|0},${Math.min(255, parseInt(n.slice(2,4),16)+255*pct)|0},${Math.min(255, parseInt(n.slice(4,6),16)+255*pct)|0})`;
+    }
+
+    function badgeSvg(tier, size) {
+      const color = tier.color;
+      const family = tier.family;
+      const div = tier.div || null;
+      const id = `rc-${tier.name.replace(/\s/g,'')}-${size}`;
+      let center = family === 'elite'
+        ? (tier.name === 'Challenger'
+          ? '<path d="M24 14 L27 22 L35 22 L28 27 L31 35 L24 30 L17 35 L20 27 L13 22 L21 22 Z" fill="rgba(255,255,255,0.9)"/>'
+          : tier.name === 'ACE KING'
+            ? '<text x="24" y="28" text-anchor="middle" font-size="14" font-weight="900" fill="#fff">♠</text>'
+            : '<path d="M24 13 L30 19 L28 29 L24 26 L20 29 L18 19 Z" fill="rgba(255,255,255,0.9)"/>')
+        : family === 'unranked'
+          ? '<path d="M24 16 L28 24 L24 32 L20 24 Z" fill="rgba(255,255,255,0.35)"/>'
+          : '<path d="M24 14 C20 18 16 20 16 24 C16 27 18 29 21 29 C22.5 29 23.5 28.5 24 27.5 C24.5 28.5 25.5 29 27 29 C30 29 32 27 32 24 C32 20 28 18 24 14 Z M24 30 L22 34 L26 34 Z" fill="rgba(0,0,0,0.55)"/>';
+      let wings = '';
+      if (div === 3) wings = [18,24,30].map((c)=>`<path d="M${c} 36 L${c+3} 40 L${c-3} 40 Z"/>`).join('');
+      else if (div === 2) wings = [21,27].map((c)=>`<path d="M${c} 36 L${c+3} 40 L${c-3} 40 Z"/>`).join('');
+      else if (div === 1) wings = '<path d="M24 36 L27 40 L21 40 Z"/>';
+      const side = family !== 'unranked' ? `<g stroke="${lighten(color,0.2)}" stroke-width="1.2" fill="none" opacity="0.7"><path d="M6 18 L2 22 L6 26"/><path d="M42 18 L46 22 L42 26"/></g>` : '';
+      return `<svg width="${size}" height="${size}" viewBox="0 0 48 48"><defs>
+        <linearGradient id="${id}f" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${lighten(color,0.22)}"/><stop offset="45%" stop-color="${color}"/><stop offset="100%" stop-color="${darken(color,0.28)}"/>
+        </linearGradient>
+        <linearGradient id="${id}r" x1="50%" y1="0%" x2="50%" y2="100%">
+          <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/><stop offset="100%" stop-color="rgba(0,0,0,0.45)"/>
+        </linearGradient>
+        <filter id="${id}g"><feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="${color}" flood-opacity="0.65"/></filter>
+      </defs>
+      <path d="M24 3 L42 11 L42 30 L24 45 L6 30 L6 11 Z" fill="url(#${id}f)" stroke="url(#${id}r)" stroke-width="1.5" filter="url(#${id}g)"/>
+      <path d="M24 8 L37 14 L37 28 L24 38 L11 28 L11 14 Z" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.75"/>
+      ${center}${wings ? `<g fill="${lighten(color,0.35)}" opacity="0.9">${wings}</g>` : ''}${side}</svg>`;
+    }
+
+    function miniCard(color) {
+      const dark = ['#E2E2E2','#F8DB72','#F4CF3D','#F1C40F','#E8D5B7','#DCC29A','#D2B48C','#C5F7F7','#CCC7FF'].includes(color)
+        || color.startsWith('#C') || color.startsWith('#E') || color.startsWith('#D');
+      const ink = dark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.85)';
+      return `<div class="mini-card" style="background:linear-gradient(155deg, color-mix(in srgb, white 24%, ${color}), ${color}); border:1px solid color-mix(in srgb, ${color} 65%, black)">
+        <span class="mini-card-corner" style="color:${ink}">A<br>♠</span>
+        <div class="mini-card-inner" style="color:${ink}">♠</div>
+      </div>`;
+    }
+
+    function rankCard(t, idx) {
+      const isCurrent = t.name === CURRENT;
+      const isFuture = idx > currentIdx;
+      const isLocked = idx < currentIdx && !isCurrent;
+      const cls = ['rank-card', isCurrent ? 'current' : '', isFuture ? 'future' : '', isLocked ? 'locked' : ''].filter(Boolean).join(' ');
+      const dim = isFuture || isLocked;
+      let tag = '';
+      if (isCurrent) tag = '<span class="current-tag">Your rank</span>';
+      else if (!isFuture && !isLocked) tag = '<span class="unlocked-tag">✓</span>';
+      return `<article class="${cls}">
+        ${tag}
+        <div class="rank-top">
+          <span style="opacity:${dim ? 0.45 : 1}">${badgeSvg(t, 34)}</span>
+          <div>
+            <div class="rank-name" style="color:${t.color}">${t.name}</div>
+            <div class="rank-mmr">MMR ${t.mmr}</div>
+          </div>
+        </div>
+        <div class="card-preview">
+          ${miniCard(t.color)}
+          <span class="card-hint">Card face color</span>
+        </div>
+      </article>`;
+    }
+
+    function renderCatalog() {
+      const filtered = activeTab === 'all' ? TIERS : TIERS.filter((t) => t.family === activeTab);
+      const groups = activeTab === 'all' ? [...new Set(TIERS.map((t) => t.family))] : [activeTab];
+      document.getElementById('catalogBody').innerHTML = groups.map((fam) => {
+        const items = filtered.filter((t) => t.family === fam);
+        if (!items.length) return '';
+        return `
+          ${activeTab === 'all' ? `<h3 class="family-title">${FAMILY_LABELS[fam]}</h3>` : ''}
+          <div class="rank-grid">
+            ${items.map((t) => rankCard(t, TIERS.indexOf(t))).join('')}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderTabs() {
+      document.getElementById('tabs').innerHTML = FAMILIES.map((f) => `
+        <button type="button" class="tab ${f.id === activeTab ? 'on' : ''}" data-tab="${f.id}">${f.label}</button>
+      `).join('');
+      document.querySelectorAll('.tab').forEach((btn) => {
+        btn.onclick = () => { activeTab = btn.dataset.tab; renderTabs(); renderCatalog(); };
+      });
+    }
+
+    const gold = TIERS.find((t) => t.name === CURRENT);
+    document.getElementById('heroBadge').innerHTML = badgeSvg(gold, 56);
+    renderTabs();
+    renderCatalog();
+  </script>
+</body>
+</html>
