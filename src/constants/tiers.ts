@@ -103,3 +103,28 @@ export function isLightTierColor(color: string): boolean {
   const light = new Set(TIER_CATALOG.filter((t) => t.family !== 'elite' && t.family !== 'unranked').map((t) => t.color));
   return light.has(color);
 }
+
+/** Tier-colored card face; null = classic white card. */
+export function tierCardFaceColor(tier: string | null | undefined): string | null {
+  if (!tier) return null;
+  return tierColor(tier);
+}
+
+export function tierCardInkColor(faceColor: string | null | undefined, redSuit: boolean): string {
+  if (!faceColor) return redSuit ? '#c0392b' : '#1a1a2e';
+  const n = faceColor.replace('#', '');
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  const light = (r * 299 + g * 587 + b * 114) / 1000 > 150;
+  if (light) return redSuit ? '#c0392b' : '#1a1a2e';
+  return redSuit ? '#ffb4a8' : '#f0f0f0';
+}
+
+export function tierCardFaceBackground(faceColor: string): string {
+  return `linear-gradient(155deg, color-mix(in srgb, white 24%, ${faceColor}), ${faceColor}, color-mix(in srgb, black 14%, ${faceColor}))`;
+}
+
+export function tierCardFaceBorder(faceColor: string): string {
+  return `color-mix(in srgb, ${faceColor} 65%, black)`;
+}

@@ -18,6 +18,7 @@ import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
 import GameHeader from '../components/GameHeader';
 import TierBadge from '../components/TierBadge';
+import { tierCardFaceColor } from '../constants/tiers';
 import { useAuthStore } from '../store/authStore';
 import { useDisplayStore } from '../store/displayStore';
 
@@ -178,6 +179,7 @@ export default function GamePage() {
 
   const myPlayer = players.find((p) => p.id === playerId);
   const myTier = myPlayer?.tier ?? authUser?.tier ?? null;
+  const myFaceColor = tierCardFaceColor(myTier);
   const humanPlayers = players.filter((p) => !p.bot);
   const allHumansReady = humanPlayers.length > 0 && humanPlayers.every((p) => p.ready);
   const skipReadyCheck = playWithBot && humanPlayers.length === 1;
@@ -301,7 +303,12 @@ export default function GamePage() {
             scores={scores}
           />
 
-          <TrickArea trick={currentTrick} />
+          <TrickArea
+            trick={currentTrick}
+            players={players}
+            myPlayerId={playerId}
+            myTier={myTier}
+          />
 
           {/* Last trick winner flash */}
           <AnimatePresence>
@@ -447,6 +454,7 @@ export default function GamePage() {
                 isMyTurn={isMyTurn && !paused}
                 roomCode={roomCode}
                 currentTrick={currentTrick}
+                faceColor={myFaceColor}
               />
             </div>
           )}
@@ -497,6 +505,7 @@ export default function GamePage() {
           hand={hand}
           players={players}
           myPlayerId={playerId}
+          faceColor={myFaceColor}
           onBid={() => setShowBidModal(false)}
         />
       )}

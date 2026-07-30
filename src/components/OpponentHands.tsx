@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { PlayerDto } from '../types/game';
 import CardComponent from './CardComponent';
+import { tierCardFaceColor } from '../constants/tiers';
 import TierBadge from './TierBadge';
 
 interface Props {
@@ -49,7 +50,12 @@ export default function OpponentHands({ players, myPlayerId, currentTurnPlayerId
             <div style={styles.faceDownRow}>
               {Array.from({ length: Math.min(player.cardCount, 6) }).map((_, i) => (
                 <div key={i} style={{ marginLeft: i > 0 ? -30 : 0, zIndex: i }}>
-                  <CardComponent card={PLACEHOLDER_CARD} faceDown small />
+                  <CardComponent
+                    card={PLACEHOLDER_CARD}
+                    faceDown
+                    small
+                    faceColor={tierCardFaceColor(player.tier)}
+                  />
                 </div>
               ))}
               {player.cardCount > 6 && (

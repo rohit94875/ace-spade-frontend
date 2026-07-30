@@ -1,13 +1,23 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrickCard } from '../types/game';
+import { TrickCard, PlayerDto } from '../types/game';
 import CardComponent from './CardComponent';
+import { tierCardFaceColor } from '../constants/tiers';
 
 interface Props {
   trick: TrickCard[];
   lastWinnerId?: string;
+  players?: PlayerDto[];
+  myPlayerId?: string;
+  myTier?: string | null;
 }
 
-export default function TrickArea({ trick }: Props) {
+export default function TrickArea({ trick, players = [], myPlayerId, myTier }: Props) {
+  function faceColorFor(playerId: string): string | null {
+    if (playerId === myPlayerId) return tierCardFaceColor(myTier);
+    const p = players.find((x) => x.id === playerId);
+    return tierCardFaceColor(p?.tier);
+  }
+
   return (
     <div style={styles.wrapper}>
       <p style={styles.label}>
@@ -24,7 +34,7 @@ export default function TrickArea({ trick }: Props) {
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               style={styles.trickItem}
             >
-              <CardComponent card={tc.card} />
+              <CardComponent card={tc.card} faceColor={faceColorFor(tc.playerId)} />
               <span style={styles.playerLabel}>{tc.username}</span>
             </motion.div>
           ))}

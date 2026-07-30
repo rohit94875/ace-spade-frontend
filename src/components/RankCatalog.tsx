@@ -50,7 +50,7 @@ export default function RankCatalog({ currentTier, placementComplete }: Props) {
         <div>
           <h2 style={styles.title}>Rank collection</h2>
           <p style={styles.sub}>
-            Every tier unlocks a unique card color in ranked games. Climb MMR to earn new faces.
+            Every tier unlocks a unique card color in all games. Climb MMR to earn new faces.
           </p>
         </div>
       </div>

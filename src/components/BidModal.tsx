@@ -13,10 +13,11 @@ interface Props {
   hand: Card[];
   players: PlayerDto[];
   myPlayerId: string;
+  faceColor?: string | null;
   onBid?: () => void;
 }
 
-export default function BidModal({ round, roomCode, hand, players, myPlayerId, onBid }: Props) {
+export default function BidModal({ round, roomCode, hand, players, myPlayerId, faceColor, onBid }: Props) {
   const [bid, setBid] = useState(0);
   const sortHand = useDisplayStore((s) => s.sortHand);
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
@@ -81,6 +82,7 @@ export default function BidModal({ round, roomCode, hand, players, myPlayerId, o
                   <CardComponent
                     key={`${card.suit}-${card.rank}-${card.deckIndex}`}
                     card={card}
+                    faceColor={faceColor}
                   />
                 ))}
               </div>
