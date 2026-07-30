@@ -50,7 +50,7 @@ export default function RankCatalog({ currentTier, placementComplete }: Props) {
         <div>
           <h2 style={styles.title}>Rank collection</h2>
           <p style={styles.sub}>
-            Every tier unlocks a unique card color in all games. Climb MMR to earn new faces.
+            Every tier tints your card backs and adds a rank glow in all games. Climb MMR to unlock new colors.
           </p>
         </div>
       </div>
@@ -109,7 +109,7 @@ export default function RankCatalog({ currentTier, placementComplete }: Props) {
                     </div>
                     <div style={styles.cardPreview}>
                       <TierCardMini color={t.color} />
-                      <span style={styles.cardHint}>Card face color</span>
+                      <span style={styles.cardHint}>Card back + glow</span>
                     </div>
                   </article>
                 );

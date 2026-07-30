@@ -2,11 +2,7 @@ import { motion } from 'framer-motion';
 import { Card, SUIT_SYMBOLS, RANK_DISPLAY, isRedSuit } from '../types/game';
 import { useDisplayStore } from '../store/displayStore';
 import { incognitoLabel } from '../utils/cardDisplay';
-import {
-  tierCardFaceBackground,
-  tierCardFaceBorder,
-  tierCardInkColor,
-} from '../constants/tiers';
+import { tierCardBackStyle, tierCardGlow } from '../constants/tiers';
 
 interface Props {
   card: Card;
@@ -16,7 +12,7 @@ interface Props {
   disabled?: boolean;
   faceDown?: boolean;
   small?: boolean;
-  /** Tier card face color (hex); omit for classic white. */
+  /** Player tier color — glow on face-up cards, tinted back when face-down. */
   faceColor?: string | null;
 }
 
@@ -32,12 +28,10 @@ export default function CardComponent({
 }: Props) {
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
   const red = isRedSuit(card.suit);
-  const ink = tierCardInkColor(faceColor, red);
   const size = small ? { width: 44, height: 60, fontSize: 13, symbolSize: 20, chipFont: 12 }
                      : { width: 70, height: 95, fontSize: 16, symbolSize: 28, chipFont: 15 };
 
   const isClickable = selectable && !disabled;
-  const tierFace = faceColor && !incognitoMode;
 
   if (incognitoMode) {
     const chipLabel = faceDown ? '?' : incognitoLabel(card);
@@ -65,67 +59,45 @@ export default function CardComponent({
   }
 
   if (faceDown) {
-    const backBg = faceColor
-      ? `linear-gradient(135deg, color-mix(in srgb, ${faceColor} 35%, #1a3a6e), #1a3a6e)`
-      : '#1a3a6e';
-    const backBorder = faceColor
-      ? `2px solid color-mix(in srgb, ${faceColor} 50%, #2a5aae)`
-      : '2px solid #2a5aae';
+    const back = tierCardBackStyle(faceColor);
     return (
       <div style={{
         ...styles.card(size.width, size.height),
-        background: backBg,
-        border: backBorder,
+        background: back.background,
+        border: back.border,
+        boxShadow: back.boxShadow,
       }}>
-        <span style={{ fontSize: size.symbolSize, opacity: 0.3 }}>♠</span>
+        <span style={{ fontSize: size.symbolSize, opacity: 0.35, color: 'rgba(255,255,255,0.85)' }}>♠</span>
       </div>
     );
   }
-
-  const selectionBorder = selected ? '2px solid #f1c40f' : `2px solid ${tierFace ? tierCardFaceBorder(faceColor!) : 'transparent'}`;
 
   return (
     <motion.div
       onClick={isClickable ? onClick : undefined}
       style={{
         ...styles.card(size.width, size.height),
-        color: ink,
-        background: tierFace ? tierCardFaceBackground(faceColor!) : '#fff',
+        color: red ? '#c0392b' : '#1a1a2e',
+        background: '#fff',
         cursor: isClickable ? 'pointer' : 'default',
-        border: selectionBorder,
-        boxShadow: selected
-          ? '0 0 12px #f1c40f88'
-          : tierFace
-            ? `0 3px 10px rgba(0,0,0,0.4), 0 0 8px color-mix(in srgb, ${faceColor} 35%, transparent)`
-            : '0 3px 10px rgba(0,0,0,0.4)',
+        border: selected ? '2px solid #f1c40f' : '2px solid transparent',
+        boxShadow: tierCardGlow(faceColor, selected),
         transform: selected ? 'translateY(-10px)' : undefined,
         opacity: disabled ? 0.35 : 1,
         filter: disabled ? 'grayscale(60%)' : undefined,
-        position: 'relative',
-        overflow: 'hidden',
       }}
-      whileHover={isClickable ? { y: -6, boxShadow: '0 8px 20px rgba(0,0,0,0.5)' } : {}}
+      whileHover={isClickable ? { y: -6, boxShadow: tierCardGlow(faceColor, selected, true) } : {}}
       whileTap={isClickable ? { scale: 0.95 } : {}}
       initial={{ opacity: disabled ? 0.35 : 0, rotateY: 90 }}
       animate={{ opacity: disabled ? 0.35 : 1, rotateY: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {tierFace && (
-        <div style={{
-          position: 'absolute',
-          inset: 4,
-          borderRadius: 5,
-          border: '1px solid rgba(255,255,255,0.12)',
-          boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
-          pointerEvents: 'none',
-        }} />
-      )}
-      <div style={{ ...styles.corner('left', size.fontSize), color: ink, zIndex: 1 }}>
+      <div style={styles.corner('left', size.fontSize)}>
         <span>{RANK_DISPLAY[card.rank]}</span>
         <span>{SUIT_SYMBOLS[card.suit]}</span>
       </div>
-      <span style={{ fontSize: size.symbolSize, zIndex: 1 }}>{SUIT_SYMBOLS[card.suit]}</span>
-      <div style={{ ...styles.corner('right', size.fontSize), color: ink, zIndex: 1 }}>
+      <span style={{ fontSize: size.symbolSize }}>{SUIT_SYMBOLS[card.suit]}</span>
+      <div style={styles.corner('right', size.fontSize)}>
         <span>{RANK_DISPLAY[card.rank]}</span>
         <span>{SUIT_SYMBOLS[card.suit]}</span>
       </div>

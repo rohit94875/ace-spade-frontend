@@ -104,27 +104,40 @@ export function isLightTierColor(color: string): boolean {
   return light.has(color);
 }
 
-/** Tier-colored card face; null = classic white card. */
+/** Tier color for card glow / back tint; null = default styling. */
 export function tierCardFaceColor(tier: string | null | undefined): string | null {
   if (!tier) return null;
   return tierColor(tier);
 }
 
-export function tierCardInkColor(faceColor: string | null | undefined, redSuit: boolean): string {
-  if (!faceColor) return redSuit ? '#c0392b' : '#1a1a2e';
-  const n = faceColor.replace('#', '');
-  const r = parseInt(n.slice(0, 2), 16);
-  const g = parseInt(n.slice(2, 4), 16);
-  const b = parseInt(n.slice(4, 6), 16);
-  const light = (r * 299 + g * 587 + b * 114) / 1000 > 150;
-  if (light) return redSuit ? '#c0392b' : '#1a1a2e';
-  return redSuit ? '#ffb4a8' : '#f0f0f0';
+export function tierCardGlow(
+  tierColorHex: string | null | undefined,
+  selected = false,
+  hover = false,
+): string {
+  if (selected) return '0 0 12px #f1c40f88';
+  const depth = hover ? '0 8px 20px rgba(0,0,0,0.5)' : '0 3px 10px rgba(0,0,0,0.4)';
+  if (!tierColorHex) return depth;
+  const glow = hover ? 18 : 14;
+  const spread = hover ? 6 : 4;
+  return `${depth}, 0 0 ${glow}px color-mix(in srgb, ${tierColorHex} 55%, transparent), 0 0 ${spread}px color-mix(in srgb, ${tierColorHex} 35%, transparent)`;
 }
 
-export function tierCardFaceBackground(faceColor: string): string {
-  return `linear-gradient(155deg, color-mix(in srgb, white 24%, ${faceColor}), ${faceColor}, color-mix(in srgb, black 14%, ${faceColor}))`;
-}
-
-export function tierCardFaceBorder(faceColor: string): string {
-  return `color-mix(in srgb, ${faceColor} 65%, black)`;
+export function tierCardBackStyle(tierColorHex: string | null | undefined): {
+  background: string;
+  border: string;
+  boxShadow: string;
+} {
+  if (!tierColorHex) {
+    return {
+      background: 'linear-gradient(135deg, #1e4a8a, #1a3a6e)',
+      border: '2px solid #2a5aae',
+      boxShadow: '0 3px 10px rgba(0,0,0,0.4)',
+    };
+  }
+  return {
+    background: `linear-gradient(145deg, color-mix(in srgb, ${tierColorHex} 62%, #1a2a4a), color-mix(in srgb, ${tierColorHex} 38%, #0f1f3a))`,
+    border: `2px solid color-mix(in srgb, ${tierColorHex} 72%, #2a5aae)`,
+    boxShadow: `0 3px 10px rgba(0,0,0,0.4), 0 0 14px color-mix(in srgb, ${tierColorHex} 50%, transparent)`,
+  };
 }

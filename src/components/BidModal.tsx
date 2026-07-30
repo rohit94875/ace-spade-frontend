@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, PlayerDto } from '../types/game';
 import { sendBid } from '../services/websocket';
@@ -19,12 +19,28 @@ interface Props {
 
 export default function BidModal({ round, roomCode, hand, players, myPlayerId, faceColor, onBid }: Props) {
   const [bid, setBid] = useState(0);
+  const [confirmReady, setConfirmReady] = useState(false);
+  const [cooldownSec, setCooldownSec] = useState(2);
   const sortHand = useDisplayStore((s) => s.sortHand);
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
   const otherBids = players.filter((p) => p.id !== myPlayerId && p.bid !== null);
   const visibleHand = orderHand(hand, sortHand);
 
+  useEffect(() => {
+    setConfirmReady(false);
+    setCooldownSec(2);
+    const unlockTimer = setTimeout(() => setConfirmReady(true), 2000);
+    const tickTimer = setInterval(() => {
+      setCooldownSec((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => {
+      clearTimeout(unlockTimer);
+      clearInterval(tickTimer);
+    };
+  }, [round, roomCode]);
+
   function handleBid() {
+    if (!confirmReady) return;
     sendBid(roomCode, bid);
     onBid?.();
   }
@@ -113,12 +129,19 @@ export default function BidModal({ round, roomCode, hand, players, myPlayerId, f
         </div>
 
         <motion.button
-          style={styles.confirmBtn}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
+          type="button"
+          style={{
+            ...styles.confirmBtn,
+            ...(!confirmReady ? styles.confirmBtnDisabled : {}),
+          }}
+          disabled={!confirmReady}
+          whileHover={confirmReady ? { scale: 1.03 } : {}}
+          whileTap={confirmReady ? { scale: 0.97 } : {}}
           onClick={handleBid}
         >
-          Confirm Bid: {bid} trick{bid !== 1 ? 's' : ''}
+          {confirmReady
+            ? `Confirm Bid: ${bid} trick${bid !== 1 ? 's' : ''}`
+            : `Review your hand… (${cooldownSec || 1}s)`}
         </motion.button>
       </motion.div>
     </motion.div>
@@ -233,5 +256,11 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
     color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer',
     boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+  },
+  confirmBtnDisabled: {
+    background: 'rgba(255,255,255,0.12)',
+    color: 'rgba(255,255,255,0.45)',
+    cursor: 'not-allowed',
+    boxShadow: 'none',
   },
 };
