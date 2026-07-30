@@ -142,8 +142,7 @@
       { name: 'Diamond 2', color: '#B6B0FF', mmr: '1850–1899', family: 'diamond', div: 2 },
       { name: 'Diamond 1', color: '#A29BFE', mmr: '1900–1949', family: 'diamond', div: 1 },
       { name: 'Master', color: '#8E44AD', mmr: '1950–1974', family: 'elite' },
-      { name: 'ACE KING', color: '#E74C3C', mmr: '1975–1999', family: 'elite' },
-      { name: 'Challenger', color: '#00CEC9', mmr: '2000+', family: 'elite' },
+      { name: 'ACE KING', color: '#E74C3C', mmr: '1975+', family: 'elite' },
     ];
 
     function darken(hex, pct) {
@@ -203,9 +202,7 @@
       } else if (family === 'unranked') {
         center = '<path d="M24 16 L28 24 L24 32 L20 24 Z" fill="rgba(255,255,255,0.35)"/>';
       } else if (family === 'elite') {
-        if (tier.name === 'Challenger') {
-          center = '<path d="M24 14 L27 22 L35 22 L28 27 L31 35 L24 30 L17 35 L20 27 L13 22 L21 22 Z" fill="rgba(255,255,255,0.9)"/>';
-        } else if (tier.name === 'ACE KING') {
+        if (tier.name === 'ACE KING') {
           center = '<text x="24" y="28" text-anchor="middle" font-size="14" font-weight="900" fill="rgba(255,255,255,0.95)">♠</text>';
         } else {
           center = '<path d="M24 13 L30 19 L28 29 L24 26 L20 29 L18 19 Z" fill="rgba(255,255,255,0.9)"/>';

@@ -63,27 +63,23 @@ export default function RankCollectionPage() {
         </div>
 
         <div style={styles.hero}>
-          <div style={styles.heroLeft}>
-            <TierBadge
-              tier={profile.tier}
-              placing={!profile.placementComplete}
-              placementGames={profile.placementGames}
-              placementRequired={profile.placementRequired}
-              size="lg"
-            />
-            <div>
-              <h1 style={styles.title}>Rank collection</h1>
-              <p style={styles.sub}>
-                {isOwnProfile
-                  ? 'Tier progress and card back unlocks.'
-                  : `${profile.username}'s tier progress and card back unlocks.`}
-              </p>
+          <TierBadge
+            tier={profile.tier}
+            placing={!profile.placementComplete}
+            placementGames={profile.placementGames}
+            placementRequired={profile.placementRequired}
+            size="md"
+          />
+          <div style={styles.heroText}>
+            <h1 style={styles.title}>Rank collection</h1>
+            <p style={styles.sub}>
+              {isOwnProfile ? profile.username : `${profile.username}'s tiers`}
               {profile.tier && profile.placementComplete && (
-                <p style={{ ...styles.currentTier, color: tierColor(profile.tier) }}>
-                  Current rank: {profile.tier}
-                </p>
+                <span style={{ color: tierColor(profile.tier), fontWeight: 700 }}>
+                  {' · '}{profile.tier}
+                </span>
               )}
-            </div>
+            </p>
           </div>
         </div>
 
@@ -91,6 +87,7 @@ export default function RankCollectionPage() {
           currentTier={profile.tier}
           placementComplete={profile.placementComplete}
           viewingOwnProfile={isOwnProfile}
+          hideHeader
         />
       </div>
     </div>
@@ -98,27 +95,33 @@ export default function RankCollectionPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#0d2b1a', padding: 24, display: 'flex', justifyContent: 'center' },
+  page: { minHeight: '100vh', background: '#0d2b1a', padding: 20, display: 'flex', justifyContent: 'center' },
   card: {
     background: 'linear-gradient(135deg, #1b4332, #0d2b1a)',
     border: '1px solid rgba(255,255,255,0.12)',
     borderRadius: 16,
-    padding: 28,
+    padding: '20px 22px',
     width: '100%',
-    maxWidth: 1040,
+    maxWidth: 880,
   },
   topNav: {
     display: 'flex',
-    gap: 16,
-    marginBottom: 20,
-    paddingBottom: 12,
+    gap: 14,
+    marginBottom: 14,
+    paddingBottom: 10,
     borderBottom: '1px solid rgba(255,255,255,0.08)',
   },
-  hero: { marginBottom: 8 },
-  heroLeft: { display: 'flex', alignItems: 'center', gap: 16 },
-  title: { margin: '0 0 6px', fontSize: 22, fontWeight: 900, color: '#fff' },
-  sub: { margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.45 },
-  currentTier: { margin: '8px 0 0', fontSize: 12, fontWeight: 800 },
+  hero: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+    paddingBottom: 12,
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+  },
+  heroText: { minWidth: 0 },
+  title: { margin: 0, fontSize: 18, fontWeight: 900, color: '#fff' },
+  sub: { margin: '2px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.5)' },
   muted: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
-  link: { color: '#74c69d', fontSize: 14, fontWeight: 600, textDecoration: 'none' },
+  link: { color: '#74c69d', fontSize: 13, fontWeight: 600, textDecoration: 'none' },
 };

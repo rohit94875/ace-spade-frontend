@@ -20,7 +20,6 @@ export const TIER_COLORS: Record<string, string> = {
   'Diamond 1': '#A29BFE',
   Master: '#8E44AD',
   'ACE KING': '#E74C3C',
-  Challenger: '#00CEC9',
 };
 
 export type TierFamily =
@@ -57,8 +56,7 @@ export const TIER_CATALOG: TierCatalogEntry[] = [
   { name: 'Diamond 2', family: 'diamond', familyLabel: 'Diamond', color: '#B6B0FF', mmr: '1850 – 1899', division: 2 },
   { name: 'Diamond 1', family: 'diamond', familyLabel: 'Diamond', color: '#A29BFE', mmr: '1900 – 1949', division: 1 },
   { name: 'Master', family: 'elite', familyLabel: 'Elite', color: '#8E44AD', mmr: '1950 – 1974', division: null },
-  { name: 'ACE KING', family: 'elite', familyLabel: 'Elite', color: '#E74C3C', mmr: '1975 – 1999', division: null },
-  { name: 'Challenger', family: 'elite', familyLabel: 'Elite', color: '#00CEC9', mmr: '2000+', division: null },
+  { name: 'ACE KING', family: 'elite', familyLabel: 'Elite', color: '#E74C3C', mmr: '1975+', division: null },
 ];
 
 export function tierColor(tier: string | null | undefined): string {
@@ -95,7 +93,7 @@ export function tierCatalogIndex(tier: string | null | undefined): number {
 export function tierEmblem(tier: string | null | undefined): string {
   if (!tier) return '?';
   const f = tierFamily(tier);
-  if (f === 'elite') return tier === 'Challenger' ? 'R' : '★';
+  if (f === 'elite') return tier === 'ACE KING' ? '♠' : '★';
   return '♠';
 }
 

@@ -84,17 +84,22 @@
 
     .rank-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-      gap: 12px;
-      margin-bottom: 22px;
+      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+      gap: 6px;
+      margin-bottom: 14px;
     }
 
     .rank-card {
-      background: rgba(0,0,0,0.32);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 14px;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 8px 8px 7px;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      text-align: center;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
     .rank-card:hover:not(.locked) { transform: translateY(-2px); }
@@ -107,38 +112,18 @@
     .rank-card.locked { opacity: 0.36; filter: grayscale(0.4); }
 
     .current-tag {
-      position: absolute; top: 10px; right: 10px;
-      font-size: 8px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
-      color: #74c69d; background: rgba(116,198,157,0.18);
-      padding: 3px 7px; border-radius: 4px;
+      position: absolute; top: 5px; right: 5px;
+      font-size: 7px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;
+      color: #74c69d; background: rgba(116,198,157,0.15);
+      padding: 1px 5px; border-radius: 3px;
     }
     .unlocked-tag {
-      position: absolute; top: 10px; right: 10px;
-      font-size: 8px; font-weight: 800; color: rgba(255,255,255,0.35);
+      position: absolute; top: 5px; right: 5px;
+      font-size: 7px; font-weight: 800; color: rgba(255,255,255,0.35);
     }
 
-    .rank-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-    .rank-name { font-size: 13px; font-weight: 800; line-height: 1.2; }
-    .rank-mmr { font-size: 9px; font-family: ui-monospace, monospace; color: rgba(255,255,255,0.4); margin-top: 2px; }
-
-    .card-preview {
-      display: flex; align-items: center; gap: 10px;
-      padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);
-    }
-    .mini-card {
-      width: 40px; height: 56px; border-radius: 6px; position: relative; flex-shrink: 0;
-      overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    }
-    .mini-card-inner {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-    }
-    .mini-card-corner {
-      position: absolute; top: 5px; left: 6px;
-      font-size: 8px; font-weight: 800; line-height: 1;
-    }
-    .card-hint { font-size: 9px; color: rgba(255,255,255,0.35); font-weight: 600; }
+    .rank-name { font-size: 10px; font-weight: 800; line-height: 1.15; }
+    .rank-mmr { font-size: 8px; font-family: ui-monospace, monospace; color: rgba(255,255,255,0.38); margin-top: 1px; }
 
     .legend {
       margin-top: 8px;
@@ -225,8 +210,7 @@
       { name: 'Diamond 2', color: '#B6B0FF', mmr: '1850–1899', family: 'diamond', div: 2 },
       { name: 'Diamond 1', color: '#A29BFE', mmr: '1900–1949', family: 'diamond', div: 1 },
       { name: 'Master', color: '#8E44AD', mmr: '1950–1974', family: 'elite' },
-      { name: 'ACE KING', color: '#E74C3C', mmr: '1975–1999', family: 'elite' },
-      { name: 'Challenger', color: '#00CEC9', mmr: '2000+', family: 'elite' },
+      { name: 'ACE KING', color: '#E74C3C', mmr: '1975+', family: 'elite' },
     ];
 
     const FAMILIES = [
@@ -288,9 +272,7 @@
       const div = tier.div || null;
       const id = `rc-${tier.name.replace(/\s/g,'')}-${size}`;
       let center = family === 'elite'
-        ? (tier.name === 'Challenger'
-          ? '<path d="M24 14 L27 22 L35 22 L28 27 L31 35 L24 30 L17 35 L20 27 L13 22 L21 22 Z" fill="rgba(255,255,255,0.9)"/>'
-          : tier.name === 'ACE KING'
+        ? (tier.name === 'ACE KING'
             ? '<text x="24" y="28" text-anchor="middle" font-size="14" font-weight="900" fill="#fff">♠</text>'
             : '<path d="M24 13 L30 19 L28 29 L24 26 L20 29 L18 19 Z" fill="rgba(255,255,255,0.9)"/>')
         : family === 'unranked'
@@ -312,16 +294,6 @@
       ${center}${division}${side}</svg>`;
     }
 
-    function miniCard(color) {
-      const dark = ['#E2E2E2','#F8DB72','#F4CF3D','#F1C40F','#E8D5B7','#DCC29A','#D2B48C','#C5F7F7','#CCC7FF'].includes(color)
-        || color.startsWith('#C') || color.startsWith('#E') || color.startsWith('#D');
-      const ink = dark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.85)';
-      return `<div class="mini-card" style="background:linear-gradient(155deg, color-mix(in srgb, white 24%, ${color}), ${color}); border:1px solid color-mix(in srgb, ${color} 65%, black)">
-        <span class="mini-card-corner" style="color:${ink}">A<br>♠</span>
-        <div class="mini-card-inner" style="color:${ink}">♠</div>
-      </div>`;
-    }
-
     function rankCard(t, idx) {
       const isCurrent = t.name === CURRENT;
       const isFuture = idx > currentIdx;
@@ -333,16 +305,10 @@
       else if (!isFuture && !isLocked) tag = '<span class="unlocked-tag">✓</span>';
       return `<article class="${cls}">
         ${tag}
-        <div class="rank-top">
-          <span style="opacity:${dim ? 0.45 : 1}">${badgeSvg(t, 34)}</span>
-          <div>
-            <div class="rank-name" style="color:${t.color}">${t.name}</div>
-            <div class="rank-mmr">MMR ${t.mmr}</div>
-          </div>
-        </div>
-        <div class="card-preview">
-          ${miniCard(t.color)}
-                      <span class="card-hint">Card back + glow</span>
+        <span style="opacity:${dim ? 0.45 : 1}">${badgeSvg(t, 28)}</span>
+        <div>
+          <div class="rank-name" style="color:${t.color}">${t.name}</div>
+          <div class="rank-mmr">${t.mmr}</div>
         </div>
       </article>`;
     }

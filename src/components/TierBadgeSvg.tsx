@@ -35,13 +35,6 @@ function CenterIcon({ family, eliteTier, color }: { family: TierFamily; eliteTie
     return <path d="M24 16 L28 24 L24 32 L20 24 Z" fill="rgba(255,255,255,0.35)" />;
   }
   if (family === 'elite') {
-    if (eliteTier === 'Challenger') {
-      return (
-        <>
-          <path d="M24 14 L27 22 L35 22 L28 27 L31 35 L24 30 L17 35 L20 27 L13 22 L21 22 Z" fill="rgba(255,255,255,0.9)" />
-        </>
-      );
-    }
     if (eliteTier === 'ACE KING') {
       return <text x="24" y="28" textAnchor="middle" fontSize="14" fontWeight="900" fill="rgba(255,255,255,0.95)">♠</text>;
     }
