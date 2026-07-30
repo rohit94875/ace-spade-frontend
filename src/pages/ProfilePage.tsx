@@ -30,6 +30,11 @@ export default function ProfilePage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
+        <div style={styles.topNav}>
+          <Link to="/" style={styles.link}>← Lobby</Link>
+          <Link to="/leaderboard" style={styles.link}>Leaderboard</Link>
+        </div>
+
         <div style={styles.header}>
           <h1 style={styles.title}>{user.username}</h1>
           <button type="button" style={styles.logoutBtn} onClick={() => logout()}>Log out</button>
@@ -77,11 +82,6 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
-
-        <div style={styles.navLinks}>
-          <Link to="/leaderboard" style={styles.link}>Leaderboard</Link>
-          <Link to="/" style={styles.link}>Lobby</Link>
-        </div>
       </div>
     </div>
   );
@@ -90,6 +90,7 @@ export default function ProfilePage() {
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0d2b1a', padding: 24, display: 'flex', justifyContent: 'center' },
   card: { background: 'linear-gradient(135deg, #1b4332, #0d2b1a)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 560 },
+  topNav: { display: 'flex', gap: 16, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: '#fff', fontSize: 22, fontWeight: 800, margin: 0 },
   logoutBtn: { background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12 },
@@ -103,7 +104,6 @@ const styles: Record<string, React.CSSProperties> = {
   casualNote: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, lineHeight: 1.45 },
   sectionTitle: { color: '#fff', fontSize: 16, margin: '8px 0 12px' },
   muted: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
-  historyList: { display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 },
-  navLinks: { display: 'flex', gap: 16 },
-  link: { color: '#74c69d', fontSize: 14, textDecoration: 'none' },
+  historyList: { display: 'flex', flexDirection: 'column', gap: 12 },
+  link: { color: '#74c69d', fontSize: 14, fontWeight: 600, textDecoration: 'none' },
 };

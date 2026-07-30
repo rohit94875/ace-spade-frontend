@@ -371,19 +371,17 @@ export default function GamePage() {
                   </span>
                 ))}
               </div>
-              {!amHost && (
-                <motion.button
-                  type="button"
-                  style={{
-                    ...styles.readyBtn,
-                    ...(myPlayer?.ready ? styles.readyBtnOn : {}),
-                  }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => sendReady(roomCode, !myPlayer?.ready)}
-                >
-                  {myPlayer?.ready ? 'Unready' : 'Ready up'}
-                </motion.button>
-              )}
+              <motion.button
+                type="button"
+                style={{
+                  ...styles.readyBtn,
+                  ...(myPlayer?.ready ? styles.readyBtnOn : {}),
+                }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => sendReady(roomCode, !myPlayer?.ready)}
+              >
+                {myPlayer?.ready ? 'Unready' : amHost ? "I'm ready (host)" : 'Ready up'}
+              </motion.button>
             </div>
           )}
 
@@ -406,6 +404,12 @@ export default function GamePage() {
           {phase === 'LOBBY' && amHost && players.length < 2 && (
             <p style={styles.waitHint}>
               Share room code <strong>{roomCode}</strong> — need at least 2 players, or create a room with BOT Vitality
+            </p>
+          )}
+
+          {phase === 'LOBBY' && amHost && !isSpectator && players.length >= 2 && !canStart && (
+            <p style={styles.waitHint}>
+              Mark yourself ready — start unlocks once everyone (including you) is ready
             </p>
           )}
 
