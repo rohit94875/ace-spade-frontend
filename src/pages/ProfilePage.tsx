@@ -5,7 +5,6 @@ import { getMyHistory, getUserHistory, getUserProfile } from '../services/authAp
 import type { MatchHistoryEntry, PublicUserProfile } from '../types/auth';
 import MatchHistoryCard from '../components/MatchHistoryCard';
 import TierBadge from '../components/TierBadge';
-import { openRankCollectionWindow } from './RankCollectionPage';
 import { tierColor } from '../constants/tiers';
 import { RANKED_MIN_ROUNDS, RANKED_MAX_ROUNDS } from '../constants/gameLength';
 
@@ -148,18 +147,15 @@ export default function ProfilePage() {
           <div>
             <h2 style={styles.collectionTitle}>Rank collection</h2>
             <p style={styles.collectionSub}>
-              Browse all tier badges and card face colors. Opens in a separate window.
+              Browse all tier badges and card face colors you can unlock.
             </p>
           </div>
-          <button
-            type="button"
+          <Link
+            to={isOwnProfile ? '/rank-collection' : `/profile/${viewingUserId}/ranks`}
             style={styles.collectionBtn}
-            onClick={() => openRankCollectionWindow(
-              isOwnProfile ? '/rank-collection' : `/profile/${viewingUserId}/ranks`,
-            )}
           >
-            Open rank collection ↗
-          </button>
+            View rank collection →
+          </Link>
         </section>
 
         <h2 style={styles.sectionTitle}>Match history</h2>
@@ -219,6 +215,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
+    textDecoration: 'none',
+    display: 'inline-block',
   },
   sectionTitle: { color: '#fff', fontSize: 16, margin: '8px 0 12px' },
   muted: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },

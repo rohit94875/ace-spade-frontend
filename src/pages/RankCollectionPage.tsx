@@ -1,17 +1,11 @@
-import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { getUserProfile } from '../services/authApi';
 import type { PublicUserProfile } from '../types/auth';
 import RankCatalog from '../components/RankCatalog';
 import TierBadge from '../components/TierBadge';
 import { tierColor } from '../constants/tiers';
-
-const POPUP_FEATURES = 'width=980,height=900,scrollbars=yes,resizable=yes';
-
-export function openRankCollectionWindow(path: string) {
-  window.open(path, 'aceSpadeRankCollection', POPUP_FEATURES);
-}
 
 export default function RankCollectionPage() {
   const { userId: userIdParam } = useParams();
@@ -48,7 +42,9 @@ export default function RankCollectionPage() {
     return (
       <div style={styles.page}>
         <div style={styles.card}>
-          <Link to="/leaderboard" style={styles.link}>← Leaderboard</Link>
+          <div style={styles.topNav}>
+            <Link to="/leaderboard" style={styles.link}>← Leaderboard</Link>
+          </div>
           <p style={styles.muted}>Player not found.</p>
         </div>
       </div>
@@ -61,7 +57,8 @@ export default function RankCollectionPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.topNav}>
-          <Link to={backTo} style={styles.link}>← Back to profile</Link>
+          <Link to={backTo} style={styles.link}>← Profile</Link>
+          <Link to="/" style={styles.link}>Lobby</Link>
           <Link to="/leaderboard" style={styles.link}>Leaderboard</Link>
         </div>
 
@@ -98,7 +95,7 @@ export default function RankCollectionPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#0a1f14', padding: 24, display: 'flex', justifyContent: 'center' },
+  page: { minHeight: '100vh', background: '#0d2b1a', padding: 24, display: 'flex', justifyContent: 'center' },
   card: {
     background: 'linear-gradient(135deg, #1b4332, #0d2b1a)',
     border: '1px solid rgba(255,255,255,0.12)',
