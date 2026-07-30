@@ -129,9 +129,9 @@
       { name: 'Bronze 3', color: '#D89A5B', mmr: '1200–1249', family: 'bronze', div: 3 },
       { name: 'Bronze 2', color: '#D18444', mmr: '1250–1299', family: 'bronze', div: 2 },
       { name: 'Bronze 1', color: '#CD7F32', mmr: '1300–1349', family: 'bronze', div: 1 },
-      { name: 'Silver 3', color: '#E2E2E2', mmr: '1350–1399', family: 'silver', div: 3 },
-      { name: 'Silver 2', color: '#D1D1D1', mmr: '1400–1449', family: 'silver', div: 2 },
-      { name: 'Silver 1', color: '#C0C0C0', mmr: '1450–1499', family: 'silver', div: 1 },
+      { name: 'Silver 3', color: '#ECECEC', mmr: '1350–1399', family: 'silver', div: 3 },
+      { name: 'Silver 2', color: '#A8A8A8', mmr: '1400–1449', family: 'silver', div: 2 },
+      { name: 'Silver 1', color: '#787878', mmr: '1450–1499', family: 'silver', div: 1 },
       { name: 'Gold 3', color: '#F8DB72', mmr: '1500–1549', family: 'gold', div: 3 },
       { name: 'Gold 2', color: '#F4CF3D', mmr: '1550–1599', family: 'gold', div: 2 },
       { name: 'Gold 1', color: '#F1C40F', mmr: '1600–1649', family: 'gold', div: 1 },
@@ -162,6 +162,30 @@
       return `rgb(${r | 0},${g | 0},${b | 0})`;
     }
 
+    function isLightBadge(color) {
+      const n = color.replace('#', '');
+      const r = parseInt(n.slice(0, 2), 16);
+      const g = parseInt(n.slice(2, 4), 16);
+      const b = parseInt(n.slice(4, 6), 16);
+      return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+    }
+
+    function divisionMark(div, color) {
+      if (!div) return '';
+      const light = isLightBadge(color);
+      const wingFill = light ? 'rgba(22,28,38,0.92)' : 'rgba(255,255,255,0.94)';
+      const wingStroke = light ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.22)';
+      const pillFill = light ? 'rgba(18,22,30,0.95)' : 'rgba(0,0,0,0.58)';
+      const positions = div === 3 ? [13, 24, 35] : div === 2 ? [17, 31] : [24];
+      const wings = positions.map((cx) =>
+        `<path d="M${cx} 31 L${cx + 5} 39 L${cx - 5} 39 Z" fill="${wingFill}" stroke="${wingStroke}" stroke-width="0.65"/>`
+      ).join('');
+      return `<g>${wings}
+        <rect x="17.5" y="38.5" width="13" height="6.5" rx="1.8" fill="${pillFill}"/>
+        <text x="24" y="43.2" text-anchor="middle" font-size="5.8" font-weight="900" fill="#fff" font-family="system-ui,sans-serif">${div}</text>
+      </g>`;
+    }
+
     function badgeSvg(tier, opts = {}) {
       const placing = opts.placing || false;
       const size = opts.size || 48;
@@ -187,13 +211,11 @@
           center = '<path d="M24 13 L30 19 L28 29 L24 26 L20 29 L18 19 Z" fill="rgba(255,255,255,0.9)"/>';
         }
       } else {
-        center = '<path d="M24 14 C20 18 16 20 16 24 C16 27 18 29 21 29 C22.5 29 23.5 28.5 24 27.5 C24.5 28.5 25.5 29 27 29 C30 29 32 27 32 24 C32 20 28 18 24 14 Z M24 30 L22 34 L26 34 Z" fill="rgba(0,0,0,0.55)"/>';
+        const spadeFill = isLightBadge(color) ? 'rgba(0,0,0,0.62)' : 'rgba(0,0,0,0.55)';
+        center = `<path d="M24 12 C20 16 16 18 16 22 C16 25 18 27 21 27 C22.5 27 23.5 26.5 24 25.5 C24.5 26.5 25.5 27 27 27 C30 27 32 25 32 22 C32 18 28 16 24 12 Z M24 28 L22 31.5 L26 31.5 Z" fill="${spadeFill}"/>`;
       }
 
-      let wings = '';
-      if (div === 3) wings = [18, 24, 30].map((cx) => `<path d="M${cx} 36 L${cx + 3} 40 L${cx - 3} 40 Z"/>`).join('');
-      else if (div === 2) wings = [21, 27].map((cx) => `<path d="M${cx} 36 L${cx + 3} 40 L${cx - 3} 40 Z"/>`).join('');
-      else if (div === 1) wings = '<path d="M24 36 L27 40 L21 40 Z"/>';
+      const division = !placing && div ? divisionMark(div, color) : '';
 
       const sideWings = !placing && family !== 'unranked'
         ? `<g stroke="${lighten(color, 0.2)}" stroke-width="1.2" fill="none" opacity="0.7">
@@ -219,7 +241,7 @@
           ${placing ? 'opacity="0.55"' : `filter="url(#${id}-g)"`}/>
         <path d="M24 8 L37 14 L37 28 L24 38 L11 28 L11 14 Z" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="0.75"/>
         ${center}
-        ${wings ? `<g fill="${lighten(color, 0.35)}" opacity="0.9">${wings}</g>` : ''}
+        ${division}
         ${sideWings}
       </svg>`;
     }

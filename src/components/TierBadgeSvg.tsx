@@ -22,7 +22,15 @@ function lighten(hex: string, pct: number): string {
   return `rgb(${r | 0},${g | 0},${b | 0})`;
 }
 
-function CenterIcon({ family, eliteTier }: { family: TierFamily; eliteTier?: string }) {
+function isLightBadge(color: string): boolean {
+  const n = color.replace('#', '');
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 150;
+}
+
+function CenterIcon({ family, eliteTier, color }: { family: TierFamily; eliteTier?: string; color: string }) {
   if (family === 'unranked') {
     return <path d="M24 16 L28 24 L24 32 L20 24 Z" fill="rgba(255,255,255,0.35)" />;
   }
@@ -40,22 +48,45 @@ function CenterIcon({ family, eliteTier }: { family: TierFamily; eliteTier?: str
     return <path d="M24 13 L30 19 L28 29 L24 26 L20 29 L18 19 Z" fill="rgba(255,255,255,0.9)" />;
   }
   // Spade mark — Ace Spade identity on all ranked tiers
+  const spadeFill = isLightBadge(color) ? 'rgba(0,0,0,0.62)' : 'rgba(0,0,0,0.55)';
   return (
     <path
-      d="M24 14 C20 18 16 20 16 24 C16 27 18 29 21 29 C22.5 29 23.5 28.5 24 27.5 C24.5 28.5 25.5 29 27 29 C30 29 32 27 32 24 C32 20 28 18 24 14 Z M24 30 L22 34 L26 34 Z"
-      fill="rgba(0,0,0,0.55)"
+      d="M24 12 C20 16 16 18 16 22 C16 25 18 27 21 27 C22.5 27 23.5 26.5 24 25.5 C24.5 26.5 25.5 27 27 27 C30 27 32 25 32 22 C32 18 28 16 24 12 Z M24 28 L22 31.5 L26 31.5 Z"
+      fill={spadeFill}
     />
   );
 }
 
-function DivisionWings({ division, color }: { division: number | null; color: string }) {
-  if (!division) return null;
-  const chevrons = division === 3 ? [18, 24, 30] : division === 2 ? [21, 27] : [24];
+function DivisionMark({ division, color }: { division: number; color: string }) {
+  const light = isLightBadge(color);
+  const wingFill = light ? 'rgba(22, 28, 38, 0.92)' : 'rgba(255, 255, 255, 0.94)';
+  const wingStroke = light ? 'rgba(0, 0, 0, 0.45)' : 'rgba(0, 0, 0, 0.22)';
+  const pillFill = light ? 'rgba(18, 22, 30, 0.95)' : 'rgba(0, 0, 0, 0.58)';
+  const positions = division === 3 ? [13, 24, 35] : division === 2 ? [17, 31] : [24];
+
   return (
-    <g fill={lighten(color, 0.35)} opacity={0.9}>
-      {chevrons.map((cx) => (
-        <path key={cx} d={`M${cx} 36 L${cx + 3} 40 L${cx - 3} 40 Z`} />
+    <g>
+      {positions.map((cx) => (
+        <path
+          key={cx}
+          d={`M${cx} 31 L${cx + 5} 39 L${cx - 5} 39 Z`}
+          fill={wingFill}
+          stroke={wingStroke}
+          strokeWidth="0.65"
+        />
       ))}
+      <rect x="17.5" y="38.5" width="13" height="6.5" rx="1.8" fill={pillFill} />
+      <text
+        x="24"
+        y="43.2"
+        textAnchor="middle"
+        fontSize="5.8"
+        fontWeight="900"
+        fill="#fff"
+        fontFamily="system-ui, sans-serif"
+      >
+        {division}
+      </text>
     </g>
   );
 }
@@ -115,8 +146,8 @@ export default function TierBadgeSvg({ tier, placing, size }: SvgProps) {
         </>
       ) : (
         <>
-          <CenterIcon family={family} eliteTier={tier ?? undefined} />
-          <DivisionWings division={division} color={color} />
+          <CenterIcon family={family} eliteTier={tier ?? undefined} color={color} />
+          {division != null && <DivisionMark division={division} color={color} />}
         </>
       )}
 
