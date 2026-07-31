@@ -63,6 +63,7 @@ export interface ChatMessageDto {
   playerId: string;
   username: string;
   text: string;
+  mentions?: string[];
   sentAt: number;
 }
 

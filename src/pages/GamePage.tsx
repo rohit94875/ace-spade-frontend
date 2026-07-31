@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
@@ -181,6 +181,14 @@ export default function GamePage() {
   const myTier = myPlayer?.tier ?? authUser?.tier ?? null;
   const myFaceColor = tierCardFaceColor(myTier);
   const humanPlayers = players.filter((p) => !p.bot);
+  const mentionableUsers = useMemo(() => {
+    const names = new Set<string>();
+    for (const p of players) {
+      if (!p.bot) names.add(p.username);
+    }
+    for (const s of spectators) names.add(s.username);
+    return [...names];
+  }, [players, spectators]);
   const allHumansReady = humanPlayers.length > 0 && humanPlayers.every((p) => p.ready);
   const skipReadyCheck = playWithBot && humanPlayers.length === 1;
   const canStart = allHumansReady || skipReadyCheck;
@@ -287,7 +295,8 @@ export default function GamePage() {
 
       {spectators.length > 0 && (
         <div style={styles.spectatorBanner}>
-          👁 {spectators.length} spectator{spectators.length === 1 ? '' : 's'}
+          👁 Watching: {spectators.map((s) => s.username).join(', ')}
+          <span style={{ opacity: 0.75 }}> ({spectators.length})</span>
           {isSpectator ? ' · You are watching' : ''}
         </div>
       )}
@@ -470,16 +479,15 @@ export default function GamePage() {
             phase={phase}
             roundHistory={roundHistory}
           />
-          {phase !== 'LOBBY' && (
-            <div style={{ marginTop: 12 }}>
-              <ChatPanel
-                roomCode={roomCode}
-                messages={chatMessages}
-                myPlayerId={playerId}
-                disabled={phase === 'GAME_END' || (paused && !isSpectator)}
-              />
-            </div>
-          )}
+          <div style={{ marginTop: 12 }}>
+            <ChatPanel
+              roomCode={roomCode}
+              messages={chatMessages}
+              myPlayerId={playerId}
+              mentionableUsers={mentionableUsers}
+              disabled={phase === 'GAME_END' || (paused && !isSpectator)}
+            />
+          </div>
         </div>
       </div>
 
