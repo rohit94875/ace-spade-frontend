@@ -9,37 +9,43 @@ export interface RestoreResult {
   rejoined?: boolean;
 }
 
-/** Try resume token, then authenticated rejoin for the same room code. */
+/** Try resume token, then authenticated rejoin for the room code. */
 export async function restoreGameSession(
   getAccessToken: () => Promise<string | null>,
+  roomCodeOverride?: string,
 ): Promise<RestoreResult> {
   const stored = loadSession();
-  if (!stored?.roomCode) {
+  const roomCode = roomCodeOverride ?? stored?.roomCode;
+  if (!roomCode) {
     return { ok: false };
   }
 
-  try {
-    const res = await resumeSession(stored.sessionToken);
-    if (res.valid && res.room) {
-      return { ok: true, resume: res, stored };
+  if (stored?.sessionToken && stored.roomCode === roomCode && !stored.isSpectator) {
+    try {
+      const res = await resumeSession(stored.sessionToken);
+      if (res.valid && res.room) {
+        return { ok: true, resume: res, stored };
+      }
+    } catch {
+      // fall through to rejoin
     }
-  } catch {
-    // fall through to rejoin
   }
 
   const access = await getAccessToken();
-  if (!access || stored.isSpectator) {
-    return { ok: false, stored };
+  if (!access || stored?.isSpectator) {
+    return { ok: false, stored: stored ?? undefined };
   }
 
   try {
-    const joined = await rejoinRoom(stored.roomCode);
+    const joined = await rejoinRoom(roomCode);
     const next: StoredSession = {
-      ...stored,
       playerId: joined.playerId,
       sessionToken: joined.sessionToken,
       username: joined.username,
       roomCode: joined.roomCode,
+      isHost: stored?.isHost ?? false,
+      playWithBot: stored?.playWithBot,
+      isSpectator: false,
     };
     saveSession(next);
     const res = await resumeSession(joined.sessionToken);
@@ -50,6 +56,8 @@ export async function restoreGameSession(
     // room ended or no seat
   }
 
-  clearSession();
+  if (stored?.roomCode === roomCode) {
+    clearSession();
+  }
   return { ok: false };
 }

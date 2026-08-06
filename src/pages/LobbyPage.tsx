@@ -15,6 +15,7 @@ import {
   type RankedMaxRounds,
 } from '../constants/gameLength';
 import TierBadge from '../components/TierBadge';
+import RejoinGameBanner from '../components/RejoinGameBanner';
 
 type LobbyMode = 'solo' | 'join' | 'create';
 
@@ -243,6 +244,8 @@ export default function LobbyPage() {
           )}
           <Link to="/leaderboard" style={styles.authLink}>Leaderboard</Link>
         </div>
+
+        {authUser && <RejoinGameBanner />}
 
         <input
           style={styles.input}

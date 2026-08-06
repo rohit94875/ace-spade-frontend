@@ -5,6 +5,7 @@ import { getMyHistory, getUserHistory, getUserProfile } from '../services/authAp
 import type { MatchHistoryEntry, PublicUserProfile } from '../types/auth';
 import MatchHistoryCard from '../components/MatchHistoryCard';
 import TierBadge from '../components/TierBadge';
+import RejoinGameBanner from '../components/RejoinGameBanner';
 import { tierColor } from '../constants/tiers';
 import { RANKED_MIN_ROUNDS, RANKED_MAX_ROUNDS } from '../constants/gameLength';
 
@@ -87,6 +88,8 @@ export default function ProfilePage() {
           <Link to="/leaderboard" style={styles.link}>Leaderboard</Link>
         </div>
 
+        {isOwnProfile && <RejoinGameBanner />}
+
         <div style={styles.header}>
           <div style={styles.titleRow}>
             <TierBadge
@@ -129,7 +132,23 @@ export default function ProfilePage() {
             <span style={styles.statLabel}>Season</span>
             <span style={styles.statValue}>{profile.seasonId}</span>
           </div>
+          <div style={styles.stat}>
+            <span style={styles.statLabel}>Ranked leaves</span>
+            <span style={styles.statValue}>{profile.leaveCount ?? 0}</span>
+          </div>
+          <div style={styles.stat}>
+            <span style={styles.statLabel}>Next leave penalty</span>
+            <span style={{ ...styles.statValue, color: '#e74c3c' }}>
+              −{(profile.nextLeavePenaltyMmr ?? 0).toFixed(0)} MMR
+            </span>
+          </div>
         </div>
+
+        {isOwnProfile && (profile.leaveCount ?? 0) > 0 && (
+          <p style={styles.leaveNote}>
+            Leaving a ranked game costs 2<sup>n</sup> × 25 MMR (n = your leave count). Next leave: −{(profile.nextLeavePenaltyMmr ?? 0).toFixed(0)} MMR.
+          </p>
+        )}
 
         {isOwnProfile && !profile.placementComplete && (
           <p style={styles.placementNote}>
@@ -192,6 +211,7 @@ const styles: Record<string, React.CSSProperties> = {
   statValue: { color: '#fff', fontWeight: 700, fontSize: 16 },
   placementNote: { fontSize: 12, color: '#f1c40f', marginBottom: 12 },
   casualNote: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, lineHeight: 1.45 },
+  leaveNote: { fontSize: 12, color: 'rgba(231,76,60,0.9)', marginBottom: 12, lineHeight: 1.45 },
   collectionCta: {
     display: 'flex',
     flexWrap: 'wrap',

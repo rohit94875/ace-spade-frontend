@@ -9,6 +9,8 @@ export interface UserProfile {
   placementRequired: number;
   gamesPlayed: number;
   seasonId: number;
+  leaveCount: number;
+  nextLeavePenaltyMmr: number;
 }
 
 /** Public profile view — no email. */

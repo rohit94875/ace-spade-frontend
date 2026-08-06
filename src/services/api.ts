@@ -81,3 +81,16 @@ export const resumeSession = (sessionToken: string): Promise<SessionResumeRespon
   api.get('/sessions/me', {
     headers: { 'X-Session-Token': sessionToken },
   }).then((r) => r.data);
+
+export interface ActiveGameDto {
+  roomCode: string;
+  phase: string;
+  hasSeat: boolean;
+}
+
+/** Returns active seated game for the logged-in user, or null if none. */
+export const getActiveGame = (): Promise<ActiveGameDto | null> =>
+  api.get('/sessions/active').then((r) => r.data ?? null).catch((e) => {
+    if (e?.response?.status === 204) return null;
+    throw e;
+  });
