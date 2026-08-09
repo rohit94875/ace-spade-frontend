@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Vote Bot States (Static)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 24px;
+    }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    .intro { color: #8b949e; font-size: 14px; max-width: 640px; line-height: 1.5; margin-bottom: 28px; }
+    .intro a { color: #74c69d; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid #30363d;
+      background: rgba(0,0,0,0.2);
+    }
+    .card-head h2 { margin: 0 0 4px; font-size: 14px; }
+    .card-head p { margin: 0; font-size: 12px; color: #8b949e; }
+    .mock {
+      background: linear-gradient(160deg, #1a4a2e, #0d2b1a);
+      padding: 12px;
+    }
+    .bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+    .label { color: rgba(255,255,255,0.45); font-weight: 700; font-size: 11px; flex-shrink: 0; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      white-space: nowrap;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .name { color: #fff; font-weight: 600; }
+    .st { font-size: 11px; font-weight: 600; }
+    .auto { font-size: 10px; font-weight: 800; color: #fff; background: #e74c3c; border-radius: 8px; padding: 1px 6px; }
+    .vote {
+      font-size: 10px; font-weight: 700; color: #fff;
+      background: rgba(231,76,60,0.35);
+      border: 1px solid rgba(231,76,60,0.6);
+      border-radius: 8px; padding: 2px 8px;
+    }
+    .vote.on { background: #c0392b; border-color: #c0392b; }
+    .note {
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #8b949e;
+      line-height: 1.45;
+      border-top: 1px solid #30363d;
+    }
+    .arrow { color: #74c69d; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Vote to replace — all UI states</h1>
+  <p class="intro">
+    Static reference cards for each presence-bar state. For an interactive walkthrough,
+    open <a href="vote-bot-preview.html">vote-bot-preview.html</a>.
+  </p>
+
+  <div class="grid">
+    <!-- State A -->
+    <article class="card">
+      <div class="card-head">
+        <h2>A · Online player</h2>
+        <p>No vote controls</p>
+      </div>
+      <div class="mock">
+        <div class="bar">
+          <span class="label">In game</span>
+          <span class="chip">
+            <span class="dot" style="background:#2ecc71"></span>
+            <span class="name">Sam</span>
+            <span class="st" style="color:#2ecc71">Online</span>
+          </span>
+        </div>
+      </div>
+      <p class="note">Green dot. Normal play.</p>
+    </article>
+
+    <!-- State B -->
+    <article class="card">
+      <div class="card-head">
+        <h2>B · Away (1st auto-play)</h2>
+        <p>Counter visible, vote locked</p>
+      </div>
+      <div class="mock">
+        <div class="bar">
+          <span class="label">In game</span>
+          <span class="chip">
+            <span class="dot" style="background:#e67e22"></span>
+            <span class="name">Alex</span>
+            <span class="st" style="color:#e67e22">Away · auto in 8s</span>
+            <span class="auto">auto ×1</span>
+          </span>
+        </div>
+      </div>
+      <p class="note">Need <span class="arrow">2+</span> auto-plays before vote unlocks.</p>
+    </article>
+
+    <!-- State C -->
+    <article class="card">
+      <div class="card-head">
+        <h2>C · Vote bot available</h2>
+        <p>Tap to vote for takeover</p>
+      </div>
+      <div class="mock">
+        <div class="bar">
+          <span class="label">In game</span>
+          <span class="chip">
+            <span class="dot" style="background:#95a5a6"></span>
+            <span class="name">Alex</span>
+            <span class="st" style="color:#95a5a6">Away</span>
+            <span class="auto">auto ×2</span>
+            <span class="vote">Vote bot</span>
+          </span>
+        </div>
+      </div>
+      <p class="note">Red outline button on the away player's chip. Tooltip: "Vote to replace with BOT Vitality".</p>
+    </article>
+
+    <!-- State D -->
+    <article class="card">
+      <div class="card-head">
+        <h2>D · You already voted</h2>
+        <p>Waiting for majority</p>
+      </div>
+      <div class="mock">
+        <div class="bar">
+          <span class="label">In game</span>
+          <span class="chip">
+            <span class="dot" style="background:#95a5a6"></span>
+            <span class="name">Alex</span>
+            <span class="st" style="color:#95a5a6">Away</span>
+            <span class="auto">auto ×3</span>
+            <span class="vote on">Voted</span>
+          </span>
+        </div>
+      </div>
+      <p class="note">Solid red "Voted" — your vote is counted. Other connected players must vote too.</p>
+    </article>
+
+    <!-- State E -->
+    <article class="card">
+      <div class="card-head">
+        <h2>E · Majority passed</h2>
+        <p>Player becomes BOT Vitality</p>
+      </div>
+      <div class="mock">
+        <div class="bar">
+          <span class="label">In game</span>
+          <span class="chip">
+            <span class="dot" style="background:#2ecc71"></span>
+            <span class="name">BOT Vitality</span>
+            <span class="st" style="color:#2ecc71">Online</span>
+          </span>
+        </div>
+      </div>
+      <p class="note">Game shows: <em>"BOT Vitality took over the seat"</em>. No more vote button.</p>
+    </article>
+
+    <!-- State F -->
+    <article class="card">
+      <div class="card-head">
+        <h2>F · Player came back</h2>
+        <p>Vote cancelled</p>
+      </div>
+      <div class="mock">
+        <div class="bar">
+          <span class="label">In game</span>
+          <span class="chip">
+            <span class="dot" style="background:#2ecc71"></span>
+            <span class="name">Alex</span>
+            <span class="st" style="color:#2ecc71">Online</span>
+          </span>
+        </div>
+      </div>
+      <p class="note">If they reconnect, error toast: <em>"Player is back online — vote not needed"</em>.</p>
+    </article>
+  </div>
+</body>
+</html>

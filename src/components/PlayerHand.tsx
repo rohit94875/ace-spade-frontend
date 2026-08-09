@@ -13,6 +13,7 @@ interface Props {
   isMyTurn: boolean;
   roomCode: string;
   currentTrick: TrickCard[];
+  faceColor?: string | null;
 }
 
 function cardKey(c: Card) {
@@ -36,7 +37,7 @@ function validCardKeys(hand: Card[], currentTrick: TrickCard[]): Set<string> {
   return new Set(hand.filter((c) => c.suit === leadSuit).map(cardKey));
 }
 
-export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTrick }: Props) {
+export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTrick, faceColor }: Props) {
   const [selected, setSelected] = useState<Card | null>(null);
   const sortHand = useDisplayStore((s) => s.sortHand);
   const visibleHand = orderHand(hand, sortHand);
@@ -124,6 +125,7 @@ export default function PlayerHand({ hand, phase, isMyTurn, roomCode, currentTri
               >
                 <CardComponent
                   card={card}
+                  faceColor={faceColor}
                   selectable={canPlay}
                   selected={isSelected}
                   disabled={isDisabled}

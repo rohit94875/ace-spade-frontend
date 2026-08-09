@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Card, SUIT_SYMBOLS, RANK_DISPLAY, isRedSuit } from '../types/game';
 import { useDisplayStore } from '../store/displayStore';
 import { incognitoLabel } from '../utils/cardDisplay';
+import { tierCardBackStyle, tierCardGlow } from '../constants/tiers';
 
 interface Props {
   card: Card;
@@ -11,9 +12,20 @@ interface Props {
   disabled?: boolean;
   faceDown?: boolean;
   small?: boolean;
+  /** Player tier color — glow on face-up cards, tinted back when face-down. */
+  faceColor?: string | null;
 }
 
-export default function CardComponent({ card, onClick, selectable, selected, disabled, faceDown, small }: Props) {
+export default function CardComponent({
+  card,
+  onClick,
+  selectable,
+  selected,
+  disabled,
+  faceDown,
+  small,
+  faceColor = null,
+}: Props) {
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
   const red = isRedSuit(card.suit);
   const size = small ? { width: 44, height: 60, fontSize: 13, symbolSize: 20, chipFont: 12 }
@@ -47,9 +59,15 @@ export default function CardComponent({ card, onClick, selectable, selected, dis
   }
 
   if (faceDown) {
+    const back = tierCardBackStyle(faceColor);
     return (
-      <div style={{ ...styles.card(size.width, size.height), background: '#1a3a6e', border: '2px solid #2a5aae' }}>
-        <span style={{ fontSize: size.symbolSize, opacity: 0.3 }}>♠</span>
+      <div style={{
+        ...styles.card(size.width, size.height),
+        background: back.background,
+        border: back.border,
+        boxShadow: back.boxShadow,
+      }}>
+        <span style={{ fontSize: size.symbolSize, opacity: 0.35, color: 'rgba(255,255,255,0.85)' }}>♠</span>
       </div>
     );
   }
@@ -60,14 +78,15 @@ export default function CardComponent({ card, onClick, selectable, selected, dis
       style={{
         ...styles.card(size.width, size.height),
         color: red ? '#c0392b' : '#1a1a2e',
+        background: '#fff',
         cursor: isClickable ? 'pointer' : 'default',
         border: selected ? '2px solid #f1c40f' : '2px solid transparent',
-        boxShadow: selected ? '0 0 12px #f1c40f88' : '0 3px 10px rgba(0,0,0,0.4)',
+        boxShadow: tierCardGlow(faceColor, selected),
         transform: selected ? 'translateY(-10px)' : undefined,
         opacity: disabled ? 0.35 : 1,
         filter: disabled ? 'grayscale(60%)' : undefined,
       }}
-      whileHover={isClickable ? { y: -6, boxShadow: '0 8px 20px rgba(0,0,0,0.5)' } : {}}
+      whileHover={isClickable ? { y: -6, boxShadow: tierCardGlow(faceColor, selected, true) } : {}}
       whileTap={isClickable ? { scale: 0.95 } : {}}
       initial={{ opacity: disabled ? 0.35 : 0, rotateY: 90 }}
       animate={{ opacity: disabled ? 0.35 : 1, rotateY: 0 }}
@@ -90,7 +109,6 @@ const styles = {
   card: (w: number, h: number): React.CSSProperties => ({
     width: w,
     height: h,
-    background: '#fff',
     borderRadius: 8,
     display: 'flex',
     alignItems: 'center',

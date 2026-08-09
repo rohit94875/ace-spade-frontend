@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { DisconnectPolicy, MaxRounds, PublicRoomDto, SessionResumeResponse } from '../types/game';
-import { loadAuth } from './authStorage';
+import { loadAuth, saveAuth } from './authStorage';
 import { refresh as refreshAuth } from './authApi';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -14,6 +14,12 @@ api.interceptors.request.use(async (config) => {
     try {
       const res = await refreshAuth(stored.refreshToken);
       token = res.accessToken;
+      saveAuth({
+        accessToken: res.accessToken,
+        refreshToken: res.refreshToken,
+        expiresAt: Date.now() + res.expiresInMs,
+        user: res.user,
+      });
     } catch {
       return config;
     }
@@ -50,6 +56,12 @@ export const createRoom = (
 export const joinRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
   api.post(`/rooms/${code}/join`, { username }).then((r) => r.data);
 
+export const rejoinRoom = (code: string): Promise<JoinRoomResponse> =>
+  api.post(`/rooms/${code}/rejoin`, {}).then((r) => r.data);
+
+export const spectateRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
+  api.post(`/rooms/${code}/spectate`, { username }).then((r) => r.data);
+
 export const listPublicRooms = (): Promise<PublicRoomDto[]> =>
   api.get('/rooms/public').then((r) => r.data);
 
@@ -69,3 +81,16 @@ export const resumeSession = (sessionToken: string): Promise<SessionResumeRespon
   api.get('/sessions/me', {
     headers: { 'X-Session-Token': sessionToken },
   }).then((r) => r.data);
+
+export interface ActiveGameDto {
+  roomCode: string;
+  phase: string;
+  hasSeat: boolean;
+}
+
+/** Returns active seated game for the logged-in user, or null if none. */
+export const getActiveGame = (): Promise<ActiveGameDto | null> =>
+  api.get('/sessions/active').then((r) => r.data ?? null).catch((e) => {
+    if (e?.response?.status === 204) return null;
+    throw e;
+  });

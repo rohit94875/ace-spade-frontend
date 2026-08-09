@@ -150,5 +150,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  isLoggedIn: () => Boolean(get().accessToken && get().user),
+  isLoggedIn: () => {
+    const stored = loadAuth();
+    return Boolean(stored?.refreshToken && stored?.user);
+  },
 }));

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
-import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart } from '../services/websocket';
+import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart, sendReady, sendVoteBot } from '../services/websocket';
 import { getRoom, updateNickname } from '../services/api';
 import { saveNickname } from '../services/nicknameStorage';
 import { loadSession, saveSession } from '../services/sessionStorage';
@@ -17,6 +17,9 @@ import RoundSummary from '../components/RoundSummary';
 import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
 import GameHeader from '../components/GameHeader';
+import TierBadge from '../components/TierBadge';
+import { tierCardFaceColor } from '../constants/tiers';
+import { useAuthStore } from '../store/authStore';
 import { useDisplayStore } from '../store/displayStore';
 
 export default function GamePage() {
@@ -28,6 +31,7 @@ export default function GamePage() {
     roundHistory, lastTrick, roundSummary, errorMessage,
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
     presence, graceSeconds, chatMessages,
+    isSpectator, spectators, botVotes,
     handleGameEvent, setHand, dismissRoundSummary, clearError, reset,
     applySnapshot,
   } = useGameStore();
@@ -38,6 +42,7 @@ export default function GamePage() {
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
+  const authUser = useAuthStore((s) => s.user);
 
   useEffect(() => {
     setNicknameDraft(username ?? '');
@@ -83,6 +88,8 @@ export default function GamePage() {
           paused: room.paused ?? false,
           presence: room.presence ?? {},
           chatMessages: room.chatMessages ?? [],
+          spectators: room.spectators ?? [],
+          botVotes: room.botVotes ?? {},
         });
       })
       .catch(() => {});
@@ -110,6 +117,8 @@ export default function GamePage() {
             paused: room.paused ?? false,
             presence: room.presence ?? {},
             chatMessages: room.chatMessages ?? [],
+            spectators: room.spectators ?? [],
+            botVotes: room.botVotes ?? {},
           });
         })
         .catch(() => {});
@@ -169,11 +178,26 @@ export default function GamePage() {
   if (!roomCode || !playerId) return null;
 
   const myPlayer = players.find((p) => p.id === playerId);
+  const myTier = myPlayer?.tier ?? authUser?.tier ?? null;
+  const myFaceColor = tierCardFaceColor(myTier);
+  const humanPlayers = players.filter((p) => !p.bot);
+  const mentionableUsers = useMemo(() => {
+    const names = new Set<string>();
+    for (const p of players) {
+      if (!p.bot) names.add(p.username);
+    }
+    for (const s of spectators) names.add(s.username);
+    return [...names];
+  }, [players, spectators]);
+  const allHumansReady = humanPlayers.length > 0 && humanPlayers.every((p) => p.ready);
+  const skipReadyCheck = playWithBot && humanPlayers.length === 1;
+  const canStart = allHumansReady || skipReadyCheck;
   const isSoloBotGame =
     playWithBot &&
     players.length === 2 &&
     players.filter((p) => p.bot).length === 1;
   const canPause =
+    !isSpectator &&
     isSoloBotGame &&
     !paused &&
     (phase === 'BIDDING' || phase === 'PLAYING');
@@ -246,6 +270,7 @@ export default function GamePage() {
         round={round}
         maxRounds={maxRounds}
         username={username ?? ''}
+        tier={myTier}
         isHost={amHost}
         wsConnected={wsConnected}
         phase={phase}
@@ -264,7 +289,17 @@ export default function GamePage() {
         presence={presence}
         myPlayerId={playerId}
         graceSeconds={graceSeconds}
+        botVotes={botVotes}
+        onVoteBot={isSpectator ? undefined : (targetId) => sendVoteBot(roomCode, targetId)}
       />
+
+      {spectators.length > 0 && (
+        <div style={styles.spectatorBanner}>
+          👁 Watching: {spectators.map((s) => s.username).join(', ')}
+          <span style={{ opacity: 0.75 }}> ({spectators.length})</span>
+          {isSpectator ? ' · You are watching' : ''}
+        </div>
+      )}
 
       {/* Main layout */}
       <div style={styles.layout}>
@@ -277,7 +312,12 @@ export default function GamePage() {
             scores={scores}
           />
 
-          <TrickArea trick={currentTrick} />
+          <TrickArea
+            trick={currentTrick}
+            players={players}
+            myPlayerId={playerId}
+            myTier={myTier}
+          />
 
           {/* Last trick winner flash */}
           <AnimatePresence>
@@ -340,15 +380,51 @@ export default function GamePage() {
             </div>
           )}
 
-          {/* Lobby start button */}
+          {/* Lobby ready + start */}
+          {phase === 'LOBBY' && !isSpectator && (
+            <div style={styles.readyBar}>
+              <div style={styles.readyList}>
+                {humanPlayers.map((p) => (
+                  <span
+                    key={p.id}
+                    style={{
+                      ...styles.readyChip,
+                      ...(p.ready ? styles.readyChipOn : {}),
+                    }}
+                  >
+                    {!p.bot && <TierBadge tier={p.tier} size="sm" />}
+                    {' '}{p.username}{p.id === playerId ? ' (you)' : ''}
+                    {p.ready ? ' ✓' : ' …'}
+                  </span>
+                ))}
+              </div>
+              <motion.button
+                type="button"
+                style={{
+                  ...styles.readyBtn,
+                  ...(myPlayer?.ready ? styles.readyBtnOn : {}),
+                }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => sendReady(roomCode, !myPlayer?.ready)}
+              >
+                {myPlayer?.ready ? 'Unready' : amHost ? "I'm ready (host)" : 'Ready up'}
+              </motion.button>
+            </div>
+          )}
+
           {phase === 'LOBBY' && amHost && players.length >= 2 && (
             <motion.button
-              style={styles.startBtn}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => sendStart(roomCode)}
+              style={{
+                ...styles.startBtn,
+                ...(!canStart ? styles.startBtnDisabled : {}),
+              }}
+              whileHover={canStart ? { scale: 1.05 } : undefined}
+              whileTap={canStart ? { scale: 0.95 } : undefined}
+              disabled={!canStart}
+              onClick={() => canStart && sendStart(roomCode)}
             >
               🚀 Start Game ({players.length} players)
+              {!canStart && ' — waiting for ready'}
             </motion.button>
           )}
 
@@ -358,15 +434,28 @@ export default function GamePage() {
             </p>
           )}
 
-          {phase === 'LOBBY' && !amHost && (
-            <p style={styles.waitHint}>Waiting for <strong>{players.find(p => p.id === hostPlayerId)?.username ?? 'host'}</strong> to start…</p>
+          {phase === 'LOBBY' && amHost && !isSpectator && players.length >= 2 && !canStart && (
+            <p style={styles.waitHint}>
+              Mark yourself ready — start unlocks once everyone (including you) is ready
+            </p>
           )}
 
-          {/* My hand */}
-          {phase !== 'LOBBY' && (
+          {phase === 'LOBBY' && !amHost && !isSpectator && (
+            <p style={styles.waitHint}>
+              {allHumansReady
+                ? <>Waiting for <strong>{players.find(p => p.id === hostPlayerId)?.username ?? 'host'}</strong> to start…</>
+                : 'Mark yourself ready — host can start once everyone is ready'}
+            </p>
+          )}
+
+          {/* My hand (players only) */}
+          {phase !== 'LOBBY' && !isSpectator && (
             <div>
-              <p style={styles.handLabel}>
-                Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
+              <p style={{ ...styles.handLabel, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <TierBadge tier={myTier} size="sm" />
+                <span>
+                  Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
+                </span>
               </p>
               <PlayerHand
                 hand={hand}
@@ -374,6 +463,7 @@ export default function GamePage() {
                 isMyTurn={isMyTurn && !paused}
                 roomCode={roomCode}
                 currentTrick={currentTrick}
+                faceColor={myFaceColor}
               />
             </div>
           )}
@@ -389,16 +479,15 @@ export default function GamePage() {
             phase={phase}
             roundHistory={roundHistory}
           />
-          {phase !== 'LOBBY' && (
-            <div style={{ marginTop: 12 }}>
-              <ChatPanel
-                roomCode={roomCode}
-                messages={chatMessages}
-                myPlayerId={playerId}
-                disabled={phase === 'GAME_END' || paused}
-              />
-            </div>
-          )}
+          <div style={{ marginTop: 12 }}>
+            <ChatPanel
+              roomCode={roomCode}
+              messages={chatMessages}
+              myPlayerId={playerId}
+              mentionableUsers={mentionableUsers}
+              disabled={phase === 'GAME_END' || (paused && !isSpectator)}
+            />
+          </div>
         </div>
       </div>
 
@@ -417,13 +506,14 @@ export default function GamePage() {
       </AnimatePresence>
 
       {/* Modals */}
-      {showBidModal && phase === 'BIDDING' && isMyTurn && (
+      {showBidModal && phase === 'BIDDING' && isMyTurn && !isSpectator && (
         <BidModal
           round={round}
           roomCode={roomCode}
           hand={hand}
           players={players}
           myPlayerId={playerId}
+          faceColor={myFaceColor}
           onBid={() => setShowBidModal(false)}
         />
       )}
@@ -535,6 +625,65 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
     color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer',
     alignSelf: 'center' as const, boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+  },
+  startBtnDisabled: {
+    opacity: 0.45,
+    cursor: 'not-allowed',
+    background: 'rgba(45,106,79,0.5)',
+  },
+  readyBar: {
+    alignSelf: 'center' as const,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    maxWidth: 420,
+  },
+  readyList: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 8,
+    justifyContent: 'center',
+  },
+  readyChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '4px 10px',
+    borderRadius: 16,
+    fontSize: 12,
+    fontWeight: 600,
+    background: 'rgba(255,255,255,0.08)',
+    color: 'rgba(255,255,255,0.65)',
+    border: '1px solid rgba(255,255,255,0.12)',
+  },
+  readyChipOn: {
+    background: 'rgba(46,204,113,0.2)',
+    color: '#2ecc71',
+    borderColor: 'rgba(46,204,113,0.45)',
+  },
+  readyBtn: {
+    padding: '10px 20px',
+    borderRadius: 10,
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(255,255,255,0.1)',
+    color: '#fff',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  readyBtnOn: {
+    background: 'rgba(46,204,113,0.35)',
+    borderColor: '#2ecc71',
+  },
+  spectatorBanner: {
+    textAlign: 'center' as const,
+    padding: '6px 12px',
+    background: 'rgba(52,152,219,0.2)',
+    borderBottom: '1px solid rgba(52,152,219,0.35)',
+    color: '#85c1e9',
+    fontSize: 12,
+    fontWeight: 700,
   },
   shareBar: {
     alignSelf: 'center' as const,

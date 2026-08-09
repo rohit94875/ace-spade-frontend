@@ -38,6 +38,9 @@ export interface PlayerDto {
   lastSeenAt?: number;
   presenceStatus?: string;
   autoPlayCount?: number;
+  ready?: boolean;
+  /** Ranked tier badge after placement */
+  tier?: string | null;
 }
 
 export type PresenceStatus = 'ONLINE' | 'AWAY' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
@@ -60,7 +63,14 @@ export interface ChatMessageDto {
   playerId: string;
   username: string;
   text: string;
+  mentions?: string[];
   sentAt: number;
+}
+
+export interface SpectatorDto {
+  id: string;
+  username: string;
+  connected?: boolean;
 }
 
 export interface PublicRoomDto {
@@ -71,6 +81,9 @@ export interface PublicRoomDto {
   ranked: boolean;
   maxRounds: number;
   playWithBot: boolean;
+  spectatable?: boolean;
+  phase?: string;
+  spectatorCount?: number;
 }
 
 export interface SessionResumeResponse {
@@ -85,13 +98,15 @@ export interface SessionResumeResponse {
   chatMessages?: ChatMessageDto[];
   presence?: Record<string, PlayerPresenceDto>;
   message?: string;
+  spectator?: boolean;
 }
 
 export type EventType =
   | 'ROOM_UPDATED' | 'ROUND_STARTED' | 'BID_PHASE' | 'BID_PLACED'
   | 'PLAY_PHASE' | 'CARD_PLAYED' | 'TRICK_ENDED' | 'ROUND_ENDED'
   | 'GAME_ENDED' | 'PLAYER_LEFT' | 'BOT_TAKEOVER' | 'GAME_PAUSED' | 'GAME_RESUMED'
-  | 'GAME_SNAPSHOT' | 'PRESENCE_UPDATED' | 'CHAT_MESSAGE' | 'ERROR';
+  | 'GAME_SNAPSHOT' | 'PRESENCE_UPDATED' | 'CHAT_MESSAGE' | 'ERROR'
+  | 'PLAYER_READY' | 'BOT_VOTE_UPDATED' | 'SPECTATOR_JOINED';
 
 export interface GameEvent {
   type: EventType;
@@ -114,6 +129,8 @@ export interface RoomStateDto {
   pausedByPlayerId?: string | null;
   chatMessages?: ChatMessageDto[];
   presence?: Record<string, PlayerPresenceDto>;
+  spectators?: SpectatorDto[];
+  botVotes?: Record<string, string[]>;
 }
 
 export interface HandUpdate {

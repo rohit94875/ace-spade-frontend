@@ -7,6 +7,7 @@ export interface StoredSession {
   roomCode: string;
   isHost: boolean;
   playWithBot?: boolean;
+  isSpectator?: boolean;
 }
 
 export function saveSession(data: StoredSession): void {

@@ -3,6 +3,7 @@ import {
   Card, GamePhase, PlayerDto, RoomStateDto, TrickCard,
   TrickEndedPayload, RoundEndedPayload, GameEvent,
   ChatMessageDto, PlayerPresenceDto, SessionResumeResponse,
+  SpectatorDto,
 } from '../types/game';
 import { normalizeMaxRounds, CASUAL_MAX_ROUNDS, type MaxRounds } from '../constants/gameLength';
 import { saveSession, clearSession, StoredSession } from '../services/sessionStorage';
@@ -63,6 +64,9 @@ interface GameStore {
   graceSeconds: number;
   chatMessages: ChatMessageDto[];
   turnAlert: string | null;
+  isSpectator: boolean;
+  spectators: SpectatorDto[];
+  botVotes: Record<string, string[]>;
 
   setSession: (data: {
     playerId: string;
@@ -73,6 +77,7 @@ interface GameStore {
     playWithBot?: boolean;
     ranked?: boolean;
     autoStartGame?: boolean;
+    isSpectator?: boolean;
   }) => void;
   applyResume: (res: SessionResumeResponse, stored: StoredSession) => void;
   applySnapshot: (res: SessionResumeResponse) => void;
@@ -115,6 +120,9 @@ const initialState = {
   graceSeconds: 120,
   chatMessages: [] as ChatMessageDto[],
   turnAlert: null as string | null,
+  isSpectator: false,
+  spectators: [] as SpectatorDto[],
+  botVotes: {} as Record<string, string[]>,
 };
 
 function applyRoomState(
@@ -134,6 +142,8 @@ function applyRoomState(
     paused: room.paused ?? false,
     presence: room.presence ?? {},
     chatMessages: room.chatMessages ?? [],
+    spectators: room.spectators ?? [],
+    botVotes: room.botVotes ?? {},
     ...extra,
   };
 }
@@ -149,6 +159,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       roomCode: data.roomCode,
       isHost: data.isHost,
       playWithBot: data.playWithBot,
+      isSpectator: data.isSpectator,
     });
     set({
       playerId: data.playerId,
@@ -159,6 +170,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playWithBot: data.playWithBot ?? false,
       ranked: data.ranked ?? false,
       autoStartGame: data.autoStartGame ?? false,
+      isSpectator: data.isSpectator ?? false,
     });
   },
 
@@ -171,6 +183,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       username: res.username ?? stored.username,
       roomCode: res.roomCode ?? stored.roomCode,
       isHost: res.host ?? stored.isHost,
+      isSpectator: res.spectator ?? false,
       hand: res.hand ?? [],
       currentTrick: res.currentTrick ?? [],
       ...applyRoomState(room),
@@ -181,7 +194,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!res.valid || !res.room) return;
     const s = get();
     set({
-      hand: res.hand ?? s.hand,
+      isSpectator: res.spectator ?? s.isSpectator,
+      hand: res.spectator ? [] : (res.hand ?? s.hand),
       currentTrick: res.currentTrick ?? s.currentTrick,
       ...applyRoomState(res.room),
     });
@@ -346,7 +360,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
       case 'BOT_TAKEOVER':
         set({
           players: (payload['players'] as PlayerDto[]) ?? [],
+          botVotes: (payload['botVotes'] as Record<string, string[]>) ?? s.botVotes,
           errorMessage: `${payload['botUsername'] ?? 'BOT Vitality'} took over the seat`,
+        });
+        break;
+
+      case 'PLAYER_READY':
+        set({
+          players: (payload['players'] as PlayerDto[]) ?? s.players,
+        });
+        break;
+
+      case 'BOT_VOTE_UPDATED':
+        set({
+          botVotes: (payload['botVotes'] as Record<string, string[]>) ?? s.botVotes,
         });
         break;
 

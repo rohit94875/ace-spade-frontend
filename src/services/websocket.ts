@@ -115,10 +115,18 @@ export function sendResume(roomCode: string) {
   stompClient?.publish({ destination: `/app/game/${roomCode}/resume`, body: '{}' });
 }
 
-export function sendChat(roomCode: string, text: string) {
+export interface ChatSendPayload {
+  text: string;
+  mentions?: string[];
+}
+
+export function sendChat(roomCode: string, payload: ChatSendPayload | string) {
+  const body = typeof payload === 'string'
+    ? { text: payload }
+    : payload;
   stompClient?.publish({
     destination: `/app/game/${roomCode}/chat`,
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -131,6 +139,20 @@ export function disconnect() {
 
 export function sendStart(roomCode: string) {
   stompClient?.publish({ destination: `/app/game/${roomCode}/start`, body: '{}' });
+}
+
+export function sendReady(roomCode: string, ready: boolean) {
+  stompClient?.publish({
+    destination: `/app/game/${roomCode}/ready`,
+    body: JSON.stringify({ ready }),
+  });
+}
+
+export function sendVoteBot(roomCode: string, targetPlayerId: string) {
+  stompClient?.publish({
+    destination: `/app/game/${roomCode}/vote-bot`,
+    body: JSON.stringify({ targetPlayerId }),
+  });
 }
 
 export function sendBid(roomCode: string, amount: number) {
