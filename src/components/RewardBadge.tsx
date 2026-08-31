@@ -70,7 +70,7 @@ export default function RewardBadge({ symbol, statValue, pending, compact }: Pro
             <span style={{ ...styles.suit, color }}>♠</span>
             <span style={{ ...styles.rank, color: '#fff' }}>{REWARD_LABELS[symbol].replace(' Card', '')}</span>
             {statValue != null && (
-              <span style={styles.sub}>{Math.round(statValue)} MMR peak</span>
+              <span style={styles.sub}>{Math.round(statValue)} final MMR</span>
             )}
           </>
         ) : (

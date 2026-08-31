@@ -150,7 +150,7 @@ export default function SeasonsPage() {
               <section style={styles.section}>
                 <h2 style={styles.sectionTitle}>Tier cards</h2>
                 <p style={styles.mutedSmall}>
-                  Everyone with {MIN_RANKED_GAMES_FOR_REWARDS}+ ranked games earns a card based on peak MMR.
+                  Everyone with {MIN_RANKED_GAMES_FOR_REWARDS}+ ranked games earns a card based on final MMR.
                 </p>
                 <div style={styles.tierPreview}>
                   {(['SAND_CARD', 'BRONZE_CARD', 'SILVER_CARD', 'GOLD_CARD', 'PLATINUM_CARD', 'DIAMOND_CARD', 'ACE_CARD'] as const).map((sym) => (
