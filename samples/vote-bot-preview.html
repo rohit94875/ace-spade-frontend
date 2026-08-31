@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Vote to Replace with Bot (UI Preview)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #111;
+      color: #f0f0f0;
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .meta {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(17, 17, 17, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 16px;
+      margin: -16px -16px 20px;
+    }
+
+    .meta h1 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .meta p {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: #71717a;
+      line-height: 1.45;
+      max-width: 720px;
+    }
+
+    .scenario-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .scenario-btn {
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+      color: #e4e4e7;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .scenario-btn.active {
+      background: rgba(231, 76, 60, 0.2);
+      border-color: rgba(231, 76, 60, 0.55);
+      color: #ff8a80;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    .phone {
+      margin: 0 auto;
+      background: #000;
+      border-radius: 28px;
+      padding: 10px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      border: 2px solid #333;
+      max-width: 390px;
+    }
+
+    .screen {
+      border-radius: 20px;
+      overflow: hidden;
+      min-height: 680px;
+      background: linear-gradient(160deg, #1a4a2e 0%, #0d2b1a 55%, #081a10 100%);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .game-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.35);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 13px;
+    }
+
+    .game-header .brand { font-weight: 800; color: #fff; }
+    .game-header .room { color: rgba(255,255,255,0.5); font-family: monospace; font-size: 11px; }
+    .game-header .status { color: #f1c40f; font-weight: 700; font-size: 12px; }
+
+    .presence-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.25);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    .presence-label {
+      color: rgba(255, 255, 255, 0.45);
+      font-weight: 700;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .chips { display: flex; gap: 8px; flex: 1; min-width: 0; }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .chip .name { color: #fff; font-weight: 600; }
+    .chip .status { font-size: 11px; font-weight: 600; }
+
+    .auto-badge {
+      font-size: 10px;
+      font-weight: 800;
+      color: #fff;
+      background: #e74c3c;
+      border-radius: 8px;
+      padding: 1px 6px;
+    }
+
+    .vote-btn {
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(231, 76, 60, 0.35);
+      border: 1px solid rgba(231, 76, 60, 0.6);
+      border-radius: 8px;
+      padding: 2px 8px;
+      cursor: default;
+    }
+
+    .vote-btn.voted {
+      background: #c0392b;
+      border-color: #c0392b;
+    }
+
+    .toast {
+      margin: 10px 12px 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+    }
+
+    .toast.show { display: block; }
+    .toast.error {
+      background: rgba(231, 76, 60, 0.2);
+      border: 1px solid rgba(231, 76, 60, 0.45);
+      color: #ff8a80;
+    }
+    .toast.success {
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.4);
+      color: #74c69d;
+    }
+    .toast.info {
+      background: rgba(52, 152, 219, 0.15);
+      border: 1px solid rgba(52, 152, 219, 0.35);
+      color: #85c1e9;
+    }
+
+    .game-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      text-align: center;
+    }
+
+    .trick-area {
+      width: 140px;
+      height: 100px;
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.25);
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+
+    .hand-placeholder {
+      display: flex;
+      gap: 6px;
+      margin-top: auto;
+      padding-bottom: 16px;
+    }
+
+    .card {
+      width: 36px;
+      height: 50px;
+      border-radius: 6px;
+      background: #fff;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .sidebar h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .sidebar .step {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .step-num {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      line-height: 22px;
+      text-align: center;
+      border-radius: 50%;
+      background: rgba(116, 198, 157, 0.25);
+      color: #74c69d;
+      font-size: 11px;
+      font-weight: 800;
+      margin-right: 8px;
+    }
+
+    .step h3 {
+      display: inline;
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .step p {
+      margin: 8px 0 0;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.55);
+      line-height: 1.5;
+    }
+
+    .legend {
+      margin-top: 8px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .legend code {
+      background: rgba(0,0,0,0.3);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #ff8a80;
+    }
+
+    .callout {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(241, 196, 15, 0.1);
+      border: 1px solid rgba(241, 196, 15, 0.3);
+      font-size: 12px;
+      color: #f1c40f;
+      line-height: 1.5;
+    }
+
+    .nav-pages {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .nav-pages a {
+      display: block;
+      color: #74c69d;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      margin-bottom: 8px;
+    }
+
+    .nav-pages a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="meta">
+      <h1>Vote to replace with BOT Vitality — UI preview</h1>
+      <p>
+        When a player goes away mid-game, their turns are auto-played. After <strong>2 missed turns</strong>,
+        connected players see a <strong>Vote bot</strong> button on that player's chip in the presence bar.
+        Majority vote converts them to <strong>BOT Vitality</strong> so the game can continue.
+      </p>
+      <div class="scenario-btns" id="scenarioBtns"></div>
+    </div>
+
+    <div class="layout">
+      <div class="phone">
+        <div class="screen">
+          <div class="game-header">
+            <div>
+              <div class="brand">♠ Ace Spade</div>
+              <div class="room">#K7M2P9 · R4/13</div>
+            </div>
+            <div class="status" id="turnStatus">Waiting for Alex</div>
+          </div>
+
+          <div class="presence-bar">
+            <span class="presence-label">In game</span>
+            <div class="chips" id="chips"></div>
+          </div>
+
+          <div class="toast" id="toast"></div>
+
+          <div class="game-body">
+            <div class="trick-area">Trick area</div>
+            <p style="font-size:12px;color:rgba(255,255,255,0.4);margin:0 0 8px;">Your hand</p>
+            <div class="hand-placeholder">
+              <div class="card"></div>
+              <div class="card"></div>
+              <div class="card"></div>
+              <div class="card"></div>
+              <div class="card"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <h2 id="scenarioTitle">Scenario</h2>
+        <div id="scenarioSteps"></div>
+        <div class="callout" id="scenarioCallout"></div>
+        <div class="nav-pages">
+          <strong style="font-size:12px;color:rgba(255,255,255,0.5);">Related previews</strong>
+          <a href="lobby-revamp-preview.html">Lobby revamp</a>
+          <a href="vote-bot-states.html">All states (static pages)</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const SCENARIOS = [
+      {
+        id: 'all-online',
+        label: '1 · Everyone online',
+        title: 'Normal play — no vote yet',
+        turn: '▶ Your turn',
+        toast: null,
+        callout: 'Vote buttons only appear during an active game when someone is away.',
+        steps: [
+          { t: 'Presence bar', p: 'Green dot = online. No vote buttons when everyone is connected.' },
+          { t: 'Away players', p: 'If someone backgrounds the app, their chip turns grey/orange with "Away".' },
+        ],
+        players: [
+          { name: 'You', me: true, status: 'Online', color: '#2ecc71' },
+          { name: 'Alex', status: 'Online', color: '#2ecc71' },
+          { name: 'Sam', status: 'Online', color: '#2ecc71' },
+          { name: 'Jordan', status: 'Online', color: '#2ecc71' },
+        ],
+      },
+      {
+        id: 'away-first',
+        label: '2 · Away (1 auto)',
+        title: 'Away — not vote-eligible yet',
+        turn: 'Waiting for Alex',
+        toast: null,
+        callout: 'Vote unlocks after 2 auto-played turns while away. The red "auto ×1" badge tracks missed turns.',
+        steps: [
+          { t: 'Auto-play counter', p: 'Red badge shows how many turns were played automatically for the away player.' },
+          { t: 'No button yet', p: 'With only 1 auto-play, the Vote bot button is hidden.' },
+          { t: 'Game continues', p: 'Their turns still auto-play on a timer so the round does not stall.' },
+        ],
+        players: [
+          { name: 'You', me: true, status: 'Online', color: '#2ecc71' },
+          { name: 'Alex', status: 'Away · auto in 12s', color: '#e67e22', auto: 1 },
+          { name: 'Sam', status: 'Online', color: '#2ecc71' },
+          { name: 'Jordan', status: 'Online', color: '#2ecc71' },
+        ],
+      },
+      {
+        id: 'vote-available',
+        label: '3 · Vote available',
+        title: 'Vote bot button appears',
+        turn: 'Waiting for Alex',
+        toast: { type: 'info', text: 'Tap Vote bot on Alex\'s chip to replace them with BOT Vitality' },
+        callout: 'Majority of connected players must vote yes. In a 4-player game with 1 away, 2 votes are needed.',
+        steps: [
+          { t: 'Find the chip', p: 'Look at the "In game" bar below the header. Away players with auto ×2+ show a red Vote bot button.' },
+          { t: 'Tap Vote bot', p: 'Only connected human players can vote. You cannot vote on yourself.' },
+          { t: 'Majority wins', p: 'When enough players vote, Alex becomes BOT Vitality and keeps playing automatically.' },
+        ],
+        players: [
+          { name: 'You', me: true, status: 'Online', color: '#2ecc71' },
+          { name: 'Alex', status: 'Away', color: '#95a5a6', auto: 2, vote: 'available' },
+          { name: 'Sam', status: 'Online', color: '#2ecc71' },
+          { name: 'Jordan', status: 'Online', color: '#2ecc71' },
+        ],
+      },
+      {
+        id: 'you-voted',
+        label: '4 · You voted',
+        title: 'Waiting for other votes',
+        turn: 'Waiting for Alex',
+        toast: { type: 'info', text: 'You voted — waiting for 1 more player (2 of 3 needed)' },
+        callout: 'Your button changes to "Voted" (darker red). Tap again does not remove your vote in this preview.',
+        steps: [
+          { t: 'Voted state', p: 'Button label changes from "Vote bot" to "Voted" with a solid red background.' },
+          { t: 'Others must vote', p: 'Sam or Jordan still needs to tap Vote bot for the takeover to happen.' },
+        ],
+        players: [
+          { name: 'You', me: true, status: 'Online', color: '#2ecc71' },
+          { name: 'Alex', status: 'Away', color: '#95a5a6', auto: 2, vote: 'voted' },
+          { name: 'Sam', status: 'Online', color: '#2ecc71' },
+          { name: 'Jordan', status: 'Online', color: '#2ecc71' },
+        ],
+      },
+      {
+        id: 'takeover',
+        label: '5 · Bot takeover',
+        title: 'Majority reached — BOT Vitality',
+        turn: 'Waiting for BOT Vitality',
+        toast: { type: 'success', text: 'BOT Vitality took over the seat — Alex was replaced by a bot' },
+        callout: 'The game continues. BOT Vitality uses the same seat and plays turns automatically.',
+        steps: [
+          { t: 'Takeover message', p: 'A brief message appears at the top of the game (same as other game events).' },
+          { t: 'Bot plays', p: 'BOT Vitality appears in the player list and takes over Alex\'s hand.' },
+          { t: 'Votes cleared', p: 'Vote buttons disappear for that player once they are a bot.' },
+        ],
+        players: [
+          { name: 'You', me: true, status: 'Online', color: '#2ecc71' },
+          { name: 'BOT Vitality', status: 'Online', color: '#2ecc71', bot: true },
+          { name: 'Sam', status: 'Online', color: '#2ecc71' },
+          { name: 'Jordan', status: 'Online', color: '#2ecc71' },
+        ],
+      },
+      {
+        id: 'player-back',
+        label: '6 · Player returned',
+        title: 'Vote not needed',
+        turn: '▶ Your turn',
+        toast: { type: 'error', text: 'Player is back online — vote not needed' },
+        callout: 'If the away player reconnects before majority vote, voting is cancelled for them.',
+        steps: [
+          { t: 'Back online', p: 'Green dot returns. Auto-play counter resets when they are active again.' },
+          { t: 'Vote removed', p: 'Vote bot button disappears. Any in-progress votes for them are cleared.' },
+        ],
+        players: [
+          { name: 'You', me: true, status: 'Online', color: '#2ecc71' },
+          { name: 'Alex', status: 'Online', color: '#2ecc71' },
+          { name: 'Sam', status: 'Online', color: '#2ecc71' },
+          { name: 'Jordan', status: 'Online', color: '#2ecc71' },
+        ],
+      },
+    ];
+
+    let active = SCENARIOS[2].id;
+
+    function renderChip(p) {
+      const me = p.me ? ' (you)' : '';
+      const auto = p.auto ? `<span class="auto-badge">auto ×${p.auto}</span>` : '';
+      let vote = '';
+      if (p.vote === 'available') {
+        vote = '<span class="vote-btn">Vote bot</span>';
+      } else if (p.vote === 'voted') {
+        vote = '<span class="vote-btn voted">Voted</span>';
+      }
+      return `
+        <div class="chip">
+          <span class="dot" style="background:${p.color}"></span>
+          <span class="name">${p.name}${me}</span>
+          <span class="status" style="color:${p.color}">${p.status}</span>
+          ${auto}
+          ${vote}
+        </div>
+      `;
+    }
+
+    function render() {
+      const s = SCENARIOS.find((x) => x.id === active) || SCENARIOS[0];
+
+      document.getElementById('scenarioTitle').textContent = s.title;
+      document.getElementById('turnStatus').textContent = s.turn;
+      document.getElementById('scenarioCallout').textContent = s.callout;
+      document.getElementById('chips').innerHTML = s.players.map(renderChip).join('');
+
+      const toast = document.getElementById('toast');
+      if (s.toast) {
+        toast.className = `toast show ${s.toast.type}`;
+        toast.textContent = s.toast.text;
+      } else {
+        toast.className = 'toast';
+        toast.textContent = '';
+      }
+
+      document.getElementById('scenarioSteps').innerHTML = s.steps.map((step, i) => `
+        <div class="step">
+          <span class="step-num">${i + 1}</span>
+          <h3>${step.t}</h3>
+          <p>${step.p}</p>
+        </div>
+      `).join('');
+
+      document.getElementById('scenarioBtns').innerHTML = SCENARIOS.map((sc) => `
+        <button class="scenario-btn ${sc.id === active ? 'active' : ''}" data-id="${sc.id}">
+          ${sc.label}
+        </button>
+      `).join('');
+    }
+
+    document.getElementById('scenarioBtns').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-id]');
+      if (!btn) return;
+      active = btn.dataset.id;
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

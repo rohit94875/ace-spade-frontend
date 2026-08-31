@@ -29,12 +29,12 @@ export function incognitoLabel(card: Card): string {
   return `${SUIT_CODE[card.suit]}-${RANK_CODE[card.rank]}`;
 }
 
-/** Sort by suit (1–4) then rank high to low within suit. */
+/** Sort by suit (1–4) then rank low to high within suit. */
 export function sortCards(hand: Card[]): Card[] {
   return [...hand].sort((a, b) => {
     const suitDiff = SUIT_CODE[a.suit] - SUIT_CODE[b.suit];
     if (suitDiff !== 0) return suitDiff;
-    return RANK_CODE[b.rank] - RANK_CODE[a.rank];
+    return RANK_CODE[a.rank] - RANK_CODE[b.rank];
   });
 }
 

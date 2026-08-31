@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Rank Tier Cards Preview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --felt: #0d2b1a;
+      --felt-edge: #081a10;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(116,198,157,0.08), transparent),
+        #070a08;
+      color: #f0f0f0;
+      min-height: 100vh;
+    }
+
+    .shell { max-width: 1320px; margin: 0 auto; padding: 16px 20px 56px; }
+
+    .meta {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(7, 10, 8, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      padding: 14px 0 16px;
+      margin-bottom: 24px;
+    }
+
+    .meta h1 { margin: 0 0 6px; font-size: 20px; font-weight: 900; letter-spacing: -0.3px; }
+    .meta p { margin: 0 0 14px; font-size: 13px; color: #8b9a8f; line-height: 1.55; max-width: 760px; }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filter-btn, .view-btn {
+      padding: 7px 13px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: #d4ddd6; font-size: 11px; font-weight: 700; cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .filter-btn:hover, .view-btn:hover { background: rgba(255,255,255,0.09); }
+    .filter-btn.active {
+      background: rgba(116,198,157,0.18);
+      border-color: rgba(116,198,157,0.45);
+      color: #74c69d;
+    }
+    .view-btn.active {
+      background: rgba(241,196,15,0.12);
+      border-color: rgba(241,196,15,0.4);
+      color: #f1c40f;
+    }
+    .toolbar-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.1); margin: 0 4px; }
+
+    /* ── Hero ── */
+    .hero {
+      margin-bottom: 28px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.09);
+      overflow: hidden;
+      background: linear-gradient(145deg, #122a1c, #0a1810);
+    }
+
+    .hero-top {
+      padding: 20px 24px 0;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .hero-tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px 8px 10px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .hero-emblem {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 900;
+      background: var(--hc);
+      color: var(--hc-ink);
+      box-shadow: 0 0 16px color-mix(in srgb, var(--hc) 50%, transparent);
+    }
+
+    .hero-tier-name { font-size: 20px; font-weight: 900; color: var(--hc); line-height: 1.1; }
+    .hero-tier-mmr { font-size: 11px; color: #8b9a8f; font-family: ui-monospace, monospace; margin-top: 2px; }
+
+    .hero-compare {
+      display: flex; gap: 20px; align-items: center;
+      font-size: 11px; color: #8b9a8f;
+    }
+    .compare-chip {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .compare-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; font-size: 9px; }
+
+    /* Felt table */
+    .felt-table {
+      margin: 20px 24px 24px;
+      padding: 28px 20px 32px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.04), transparent 60%),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
+        linear-gradient(160deg, #1a4a2e, var(--felt) 40%, var(--felt-edge));
+      border: 3px solid #0a1f14;
+      box-shadow: inset 0 2px 20px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.35);
+      position: relative;
+    }
+
+    .felt-table::before {
+      content: '';
+      position: absolute; inset: 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+      pointer-events: none;
+    }
+
+    .hand-fan {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      min-height: 130px;
+      padding-top: 10px;
+    }
+
+    .hand-fan .pcard {
+      margin-left: -18px;
+      transition: transform 0.25s ease, margin 0.25s ease;
+    }
+    .hand-fan .pcard:first-child { margin-left: 0; }
+    .hand-fan .pcard:hover {
+      transform: translateY(-18px) scale(1.05) !important;
+      z-index: 20 !important;
+    }
+
+    .hand-label {
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Playing card component ── */
+    .pcard {
+      --tc: var(--tier-color);
+      width: var(--cw, 62px);
+      height: var(--ch, 88px);
+      border-radius: 9px;
+      position: relative;
+      flex-shrink: 0;
+      transform: var(--tilt, none);
+      z-index: var(--z, 1);
+      filter: drop-shadow(0 8px 14px rgba(0,0,0,0.45));
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    .pcard-face {
+      position: absolute; inset: 0;
+      border-radius: 9px;
+      background: var(--tc);
+      overflow: hidden;
+    }
+
+    /* Paper grain */
+    .pcard-face::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(155deg,
+          color-mix(in srgb, white 28%, var(--tc)) 0%,
+          var(--tc) 42%,
+          color-mix(in srgb, black 14%, var(--tc)) 100%);
+      opacity: 1;
+    }
+
+    /* Linen texture */
+    .pcard-face::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+      pointer-events: none;
+    }
+
+    /* Inner frame — classic card border */
+    .pcard-frame {
+      position: absolute;
+      inset: 5px;
+      border-radius: 6px;
+      border: 1.5px solid color-mix(in srgb, var(--tc) 55%, black);
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, white 25%, var(--tc)),
+        inset 0 1px 8px rgba(255,255,255,0.12);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Outer edge */
+    .pcard-edge {
+      position: absolute; inset: 0;
+      border-radius: 9px;
+      border: 1px solid color-mix(in srgb, var(--tc) 40%, black);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .pcard .corner {
+      position: absolute;
+      font-size: calc(var(--cw, 62px) * 0.17);
+      font-weight: 800;
+      line-height: 1.05;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 3;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.15);
+    }
+    .pcard .corner.tl { top: 7px; left: 8px; }
+    .pcard .corner.br { bottom: 7px; right: 8px; transform: rotate(180deg); }
+
+    .pcard .pip-center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: calc(var(--cw, 62px) * 0.42);
+      line-height: 1;
+      z-index: 3;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+
+    .pcard .pip-center.rank-only {
+      font-size: calc(var(--cw, 62px) * 0.38);
+      font-weight: 900;
+      font-family: Georgia, 'Times New Roman', serif;
+    }
+
+    .pcard.ink-light.red { color: #b71c1c; }
+    .pcard.ink-light.black { color: #1a1a2e; }
+    .pcard.ink-dark.red { color: #ffcdd2; text-shadow: 0 0 8px rgba(255,100,100,0.4); }
+    .pcard.ink-dark.black { color: #fafafa; text-shadow: 0 0 6px rgba(255,255,255,0.25); }
+
+    /* Elite shimmer */
+    .pcard.elite .pcard-face::before {
+      background:
+        linear-gradient(105deg,
+          transparent 30%,
+          color-mix(in srgb, white 35%, var(--tc)) 45%,
+          transparent 60%),
+        linear-gradient(155deg,
+          color-mix(in srgb, white 28%, var(--tc)) 0%,
+          var(--tc) 42%,
+          color-mix(in srgb, black 14%, var(--tc)) 100%);
+      background-size: 200% 100%, 100% 100%;
+      animation: shimmer 3s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { background-position: 200% 0, 0 0; }
+      50% { background-position: -100% 0, 0 0; }
+    }
+
+    /* Default white card for compare */
+    .pcard.default-white .pcard-face { background: #fafafa; --tc: #fafafa; }
+    .pcard.default-white .pcard-face::before {
+      background: linear-gradient(155deg, #fff 0%, #f0f0f0 50%, #e8e8e8 100%);
+    }
+    .pcard.default-white .pcard-frame {
+      border-color: #ccc;
+      box-shadow: inset 0 0 0 1px #fff;
+    }
+
+    /* Card back */
+    .pcard.back .pcard-face::before {
+      background:
+        radial-gradient(circle at 50% 45%, color-mix(in srgb, white 18%, var(--tc)), var(--tc) 70%);
+    }
+
+    .back-emblem {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      width: calc(var(--cw, 62px) * 0.55);
+      height: calc(var(--cw, 62px) * 0.55);
+      border-radius: 50%;
+      border: 2px solid color-mix(in srgb, white 30%, var(--tc));
+      display: flex; align-items: center; justify-content: center;
+      font-size: calc(var(--cw, 62px) * 0.28);
+      color: color-mix(in srgb, white 40%, var(--tc));
+      background: color-mix(in srgb, black 12%, var(--tc));
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+    }
+
+    .back-pattern {
+      position: absolute; inset: 10px;
+      border-radius: 4px;
+      border: 1px solid color-mix(in srgb, white 15%, var(--tc));
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* ── Tier grid panels ── */
+    .tier-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .tier-panel {
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .tier-panel:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    }
+
+    .tier-panel.selected {
+      box-shadow: 0 0 0 2px var(--tier-color), 0 12px 40px color-mix(in srgb, var(--tier-color) 25%, transparent);
+    }
+
+    .tier-panel.hidden { display: none; }
+
+    .rank-header {
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .rank-header::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, var(--tier-color), color-mix(in srgb, black 30%, var(--tier-color)));
+      opacity: 0.85;
+    }
+
+    .rank-header::after {
+      content: '';
+      position: absolute; right: -20px; top: -20px;
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+    }
+
+    .rank-emblem {
+      position: relative; z-index: 1;
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      backdrop-filter: blur(4px);
+    }
+
+    .rank-info { position: relative; z-index: 1; flex: 1; }
+    .rank-family { font-size: 9px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--tier-text-muted); }
+    .rank-name { font-size: 18px; font-weight: 900; color: var(--tier-text); margin: 2px 0; letter-spacing: -0.2px; }
+    .rank-mmr { font-size: 11px; font-family: ui-monospace, monospace; color: var(--tier-text-muted); }
+
+    .rank-division {
+      position: relative; z-index: 1;
+      font-size: 22px; font-weight: 900;
+      color: var(--tier-text);
+      opacity: 0.35;
+      font-family: Georgia, serif;
+    }
+
+    .panel-felt {
+      padding: 14px 12px 16px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.3), rgba(0,0,0,0.45));
+    }
+
+    .panel-cards {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 0;
+      min-height: 96px;
+    }
+
+    .panel-cards .pcard { margin-left: -14px; --cw: 54px; --ch: 76px; }
+    .panel-cards .pcard:first-child { margin-left: 0; }
+
+    .panel-footer {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .panel-footer code {
+      color: var(--tier-color);
+      font-weight: 700;
+      background: rgba(0,0,0,0.3);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    @media (max-width: 700px) {
+      .hero-top { flex-direction: column; }
+      .hand-fan .pcard { margin-left: -22px; }
+      .tier-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="meta">
+      <h1>♠ Rank tier cards</h1>
+      <p>
+        Card face = your tier color (no white). Inner frame, paper grain, and suit ink auto-adjust for light vs dark tiers.
+        Elite ranks get a subtle shimmer. Click a tier to preview a full hand on the felt table.
+      </p>
+      <div class="toolbar">
+        <div id="filters" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        <span class="toolbar-sep"></span>
+        <button class="view-btn active" data-view="grid">Grid</button>
+        <button class="view-btn" data-view="focus">Focus</button>
+        <span class="toolbar-sep"></span>
+        <button class="view-btn active" id="compareToggle">Compare vs default</button>
+      </div>
+    </header>
+
+    <section class="hero" id="hero"></section>
+    <div class="tier-grid" id="tierGrid"></div>
+  </div>
+
+  <script>
+    const TIERS = [
+      { name: "Please Don't Play", family: 'Unranked', color: '#616161', mmr: '< 1050', emblem: '💀', div: '' },
+      { name: 'Sand 3', family: 'Sand', color: '#E8D5B7', mmr: '1050 – 1099', emblem: '🏖', div: 'III' },
+      { name: 'Sand 2', family: 'Sand', color: '#DCC29A', mmr: '1100 – 1149', emblem: '🏖', div: 'II' },
+      { name: 'Sand 1', family: 'Sand', color: '#D2B48C', mmr: '1150 – 1199', emblem: '🏖', div: 'I' },
+      { name: 'Bronze 3', family: 'Bronze', color: '#D89A5B', mmr: '1200 – 1249', emblem: '🥉', div: 'III' },
+      { name: 'Bronze 2', family: 'Bronze', color: '#D18444', mmr: '1250 – 1299', emblem: '🥉', div: 'II' },
+      { name: 'Bronze 1', family: 'Bronze', color: '#CD7F32', mmr: '1300 – 1349', emblem: '🥉', div: 'I' },
+      { name: 'Silver 3', family: 'Silver', color: '#ECECEC', mmr: '1350 – 1399', emblem: '🥈', div: 'III' },
+      { name: 'Silver 2', family: 'Silver', color: '#A8A8A8', mmr: '1400 – 1449', emblem: '🥈', div: 'II' },
+      { name: 'Silver 1', family: 'Silver', color: '#787878', mmr: '1450 – 1499', emblem: '🥈', div: 'I' },
+      { name: 'Gold 3', family: 'Gold', color: '#F8DB72', mmr: '1500 – 1549', emblem: '🥇', div: 'III' },
+      { name: 'Gold 2', family: 'Gold', color: '#F4CF3D', mmr: '1550 – 1599', emblem: '🥇', div: 'II' },
+      { name: 'Gold 1', family: 'Gold', color: '#F1C40F', mmr: '1600 – 1649', emblem: '🥇', div: 'I' },
+      { name: 'Platinum 3', family: 'Platinum', color: '#C5F7F7', mmr: '1650 – 1699', emblem: '💎', div: 'III' },
+      { name: 'Platinum 2', family: 'Platinum', color: '#A4F1F1', mmr: '1700 – 1749', emblem: '💎', div: 'II' },
+      { name: 'Platinum 1', family: 'Platinum', color: '#81ECEC', mmr: '1750 – 1799', emblem: '💎', div: 'I' },
+      { name: 'Diamond 3', family: 'Diamond', color: '#CCC7FF', mmr: '1800 – 1849', emblem: '💠', div: 'III' },
+      { name: 'Diamond 2', family: 'Diamond', color: '#B6B0FF', mmr: '1850 – 1899', emblem: '💠', div: 'II' },
+      { name: 'Diamond 1', family: 'Diamond', color: '#A29BFE', mmr: '1900 – 1949', emblem: '💠', div: 'I' },
+      { name: 'Master', family: 'Elite', color: '#8E44AD', mmr: '1950 – 1974', emblem: '👑', div: '', elite: true },
+      { name: 'ACE KING', family: 'Elite', color: '#E74C3C', mmr: '1975+', emblem: '♠', div: '', elite: true },
+    ];
+
+    const HAND = [
+      { rank: 'A', suit: '♠', red: false, court: false },
+      { rank: 'K', suit: '♥', red: true, court: true },
+      { rank: 'Q', suit: '♦', red: true, court: true },
+      { rank: 'J', suit: '♣', red: false, court: true },
+      { rank: '10', suit: '♠', red: false, court: false },
+    ];
+
+    const LIGHT_FACES = new Set(TIERS.filter((t) => !t.elite && t.family !== 'Unranked').map((t) => t.name));
+
+    function isLight(tierName) { return LIGHT_FACES.has(tierName); }
+    function isElite(tier) { return !!tier.elite; }
+
+    function tierText(tier) {
+      const light = isLight(tier.name) || tier.family === 'Sand';
+      return {
+        text: light ? '#1a1208' : '#fff',
+        muted: light ? 'rgba(26,18,8,0.7)' : 'rgba(255,255,255,0.75)',
+        ink: light ? 'ink-light' : 'ink-dark',
+        hcInk: light ? '#1a1208' : '#fff',
+      };
+    }
+
+    function buildCard(c, tier, opts = {}) {
+      const { text: _t, ink } = tierText(tier);
+      const color = opts.defaultWhite ? '#fafafa' : tier.color;
+      const inkCls = opts.defaultWhite ? 'ink-light' : ink;
+      const suitCls = c.red ? 'red' : 'black';
+      const elite = !opts.defaultWhite && isElite(tier) ? 'elite' : '';
+      const back = opts.back ? 'back' : '';
+      const def = opts.defaultWhite ? 'default-white' : '';
+      const cw = opts.large ? '78px' : opts.small ? '54px' : '62px';
+      const ch = opts.large ? '110px' : opts.small ? '76px' : '88px';
+
+      if (opts.back) {
+        return `
+          <div class="pcard ${back} ${elite}" style="--tier-color:${color};--cw:${cw};--ch:${ch};--tilt:${opts.tilt || 'none'};--z:${opts.z || 1}">
+            <div class="pcard-face"></div>
+            <div class="back-pattern"></div>
+            <div class="back-emblem">♠</div>
+            <div class="pcard-frame"></div>
+            <div class="pcard-edge"></div>
+          </div>
+        `;
+      }
+
+      const centerPip = c.court
+        ? `<div class="pip-center rank-only ${suitCls}">${c.rank}</div>`
+        : `<div class="pip-center ${suitCls}">${c.suit}</div>`;
+
+      return `
+        <div class="pcard ${inkCls} ${suitCls} ${elite} ${def}" style="--tier-color:${color};--cw:${cw};--ch:${ch};--tilt:${opts.tilt || 'none'};--z:${opts.z || 1}">
+          <div class="pcard-face"></div>
+          <div class="corner tl ${suitCls}"><span>${c.rank}</span><span>${c.suit}</span></div>
+          ${centerPip}
+          <div class="corner br ${suitCls}"><span>${c.rank}</span><span>${c.suit}</span></div>
+          <div class="pcard-frame"></div>
+          <div class="pcard-edge"></div>
+        </div>
+      `;
+    }
+
+    function fanHand(tier, opts = {}) {
+      const tilts = ['-10deg', '-5deg', '0deg', '5deg', '10deg'];
+      return HAND.map((c, i) => buildCard(c, tier, {
+        ...opts,
+        tilt: `rotate(${tilts[i]})`,
+        z: i + 1,
+      })).join('');
+    }
+
+    function renderHero() {
+      const t = TIERS.find((x) => x.name === selectedTier) || TIERS[14];
+      const { hcInk } = tierText(t);
+      const compareHtml = showCompare ? `
+        <div class="hero-compare">
+          <div class="compare-chip">
+            <span class="compare-label">Default</span>
+            ${buildCard(HAND[1], t, { defaultWhite: true, large: true })}
+          </div>
+          <span style="font-size:18px;opacity:0.3">→</span>
+          <div class="compare-chip">
+            <span class="compare-label">${t.name}</span>
+            ${buildCard(HAND[1], t, { large: true })}
+          </div>
+        </div>
+      ` : '';
+
+      document.getElementById('hero').innerHTML = `
+        <div class="hero-top">
+          <div class="hero-tier-badge" style="--hc:${t.color};--hc-ink:${hcInk}">
+            <div class="hero-emblem">${t.emblem}</div>
+            <div>
+              <div class="hero-tier-name">${t.name}</div>
+              <div class="hero-tier-mmr">MMR ${t.mmr}</div>
+            </div>
+          </div>
+          ${compareHtml}
+        </div>
+        <div class="felt-table">
+          <div class="hand-fan">${fanHand(t, { large: true })}</div>
+          <div class="hand-label">Your hand · tier-colored faces</div>
+        </div>
+      `;
+    }
+
+    function panelHtml(t) {
+      const { text, muted } = tierText(t);
+      const cards = HAND.slice(0, 4).map((c, i) => buildCard(c, t, {
+        small: true,
+        tilt: `rotate(${(i - 1.5) * 4}deg)`,
+        z: i + 1,
+      })).join('');
+      const back = buildCard(HAND[0], t, { small: true, back: true, tilt: 'rotate(6deg)', z: 5 });
+
+      return `
+        <article class="tier-panel ${t.name === selectedTier ? 'selected' : ''}"
+          data-family="${t.family}" data-name="${t.name}"
+          style="--tier-color:${t.color};--tier-text:${text};--tier-text-muted:${muted}">
+          <div class="rank-header">
+            <div class="rank-emblem">${t.emblem}</div>
+            <div class="rank-info">
+              <div class="rank-family">${t.family}</div>
+              <div class="rank-name">${t.name}</div>
+              <div class="rank-mmr">MMR ${t.mmr}</div>
+            </div>
+            ${t.div ? `<div class="rank-division">${t.div}</div>` : ''}
+          </div>
+          <div class="panel-felt">
+            <div class="panel-cards">${cards}${back}</div>
+            <div class="panel-footer">Face <code>${t.color}</code></div>
+          </div>
+        </article>
+      `;
+    }
+
+    const families = ['All', ...new Set(TIERS.map((t) => t.family))];
+    let activeFilter = 'All';
+    let selectedTier = 'Gold 1';
+    let viewMode = 'grid';
+    let showCompare = true;
+
+    function renderFilters() {
+      document.getElementById('filters').innerHTML = families.map((f) => `
+        <button class="filter-btn ${f === activeFilter ? 'active' : ''}" data-filter="${f}">${f}</button>
+      `).join('');
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('tierGrid');
+      if (viewMode === 'focus') {
+        const t = TIERS.find((x) => x.name === selectedTier);
+        grid.innerHTML = t ? panelHtml(t) : '';
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.maxWidth = '400px';
+        grid.style.margin = '0 auto';
+      } else {
+        grid.style.gridTemplateColumns = '';
+        grid.style.maxWidth = '';
+        grid.style.margin = '';
+        grid.innerHTML = TIERS.map(panelHtml).join('');
+        grid.querySelectorAll('.tier-panel').forEach((el) => {
+          el.classList.toggle('hidden', activeFilter !== 'All' && el.dataset.family !== activeFilter);
+        });
+      }
+
+      grid.querySelectorAll('.tier-panel').forEach((el) => {
+        el.onclick = () => {
+          selectedTier = el.dataset.name;
+          renderHero();
+          renderGrid();
+        };
+      });
+    }
+
+    document.getElementById('filters').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-filter]');
+      if (!btn) return;
+      activeFilter = btn.dataset.filter;
+      renderFilters();
+      renderGrid();
+    });
+
+    document.querySelectorAll('[data-view]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        viewMode = btn.dataset.view;
+        document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('active', b === btn));
+        renderGrid();
+      });
+    });
+
+    document.getElementById('compareToggle').addEventListener('click', (e) => {
+      showCompare = !showCompare;
+      e.target.classList.toggle('active', showCompare);
+      renderHero();
+    });
+
+    renderFilters();
+    renderHero();
+    renderGrid();
+  </script>
+</body>
+</html>

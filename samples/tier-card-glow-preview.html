@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ace Spade — Tier Card Glow Preview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d2b1a;
+      color: #f0f0f0;
+    }
+    .shell { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+    .meta {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(13,43,26,0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding: 14px 0 16px;
+      margin-bottom: 24px;
+    }
+    .meta h1 { margin: 0 0 6px; font-size: 20px; font-weight: 900; }
+    .meta p { margin: 0 0 10px; font-size: 13px; color: #8b9a8f; line-height: 1.5; max-width: 720px; }
+    .links a { color: #74c69d; font-size: 12px; font-weight: 600; text-decoration: none; margin-right: 14px; }
+
+    h2 {
+      font-size: 12px; font-weight: 800; letter-spacing: 1.1px;
+      text-transform: uppercase; color: rgba(255,255,255,0.35);
+      margin: 28px 0 14px;
+    }
+
+    .panel {
+      background: linear-gradient(135deg, #1b4332, #0d2b1a);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .panel p { margin: 0 0 16px; font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
+
+    .compare {
+      display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-end; justify-content: center;
+    }
+    .compare-item { text-align: center; }
+    .compare-label { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 10px; font-weight: 600; }
+
+    .tier-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .tier-row {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .tier-name { font-size: 13px; font-weight: 800; }
+
+    .table-scene {
+      background: radial-gradient(ellipse at center, #1e5c3a 0%, #0d2b1a 70%);
+      border-radius: 16px;
+      padding: 32px 24px 40px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .hand-label {
+      text-align: center; font-size: 12px; color: rgba(255,255,255,0.5);
+      margin-bottom: 16px;
+    }
+    .hand-fan {
+      display: flex; justify-content: center; align-items: flex-end;
+      min-height: 120px; padding-top: 20px;
+    }
+    .hand-fan .card-wrap {
+      margin-left: -28px;
+      transition: transform 0.2s;
+    }
+    .hand-fan .card-wrap:first-child { margin-left: 0; }
+    .hand-fan .card-wrap:hover { transform: translateY(-12px); z-index: 10; }
+
+    .trick-row {
+      display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 24px;
+    }
+    .trick-item { text-align: center; }
+    .trick-player { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 6px; }
+
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 20px; font-size: 12px; color: rgba(255,255,255,0.55);
+      margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .legend span { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="meta">
+      <h1>Tier card glow — in-game preview</h1>
+      <p>
+        Face-up cards stay <strong style="color:#fff">classic white</strong> with normal red/black suits.
+        Your rank adds a <strong style="color:#F1C40F">colored glow</strong> around the card.
+        Face-down cards (opponents see your back) use a <strong style="color:#74c69d">tier-tinted back</strong> with matching glow.
+        Works in casual, ranked, and bot games.
+      </p>
+      <nav class="links">
+        <a href="profile-page-preview.html">Profile</a>
+        <a href="rank-collection-preview.html">Rank collection</a>
+        <a href="tier-badge-preview.html">Tier badges</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <h2 style="margin-top:0">Default vs tier (Gold 1)</h2>
+      <p>Left: no rank / placing. Right: Gold 1 — same white face, glow + back tint only.</p>
+      <div class="compare" id="compare"></div>
+    </section>
+
+    <section class="panel">
+      <h2 style="margin-top:0">At the table — your hand (Gold 1)</h2>
+      <div class="table-scene">
+        <p class="hand-label">Your hand — white cards with gold glow · opponents see gold-tinted backs</p>
+        <div class="hand-fan" id="handFan"></div>
+        <div class="trick-row" id="trickRow"></div>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:#fff; box-shadow:0 0 8px #F1C40F"></span> Face up — white + glow</span>
+        <span><span class="dot" style="background:#3d3520"></span> Face down — tier back</span>
+        <span><span class="dot" style="background:#1e4a8a"></span> Default back (no tier)</span>
+      </div>
+    </section>
+
+    <h2>All tiers — face + back</h2>
+    <div class="tier-grid" id="tierGrid"></div>
+  </div>
+
+  <script>
+    const TIERS = [
+      { name: 'Sand 1', color: '#D2B48C' },
+      { name: 'Bronze 1', color: '#CD7F32' },
+      { name: 'Silver 1', color: '#787878' },
+      { name: 'Gold 1', color: '#F1C40F' },
+      { name: 'Platinum 1', color: '#81ECEC' },
+      { name: 'Diamond 1', color: '#A29BFE' },
+      { name: 'Master', color: '#8E44AD' },
+      { name: 'ACE KING', color: '#E74C3C' },
+    ];
+
+    function ink(color) {
+      const n = color.replace('#', '');
+      const r = parseInt(n.slice(0,2),16), g = parseInt(n.slice(2,4),16), b = parseInt(n.slice(4,6),16);
+      return (r*299+g*587+b*114)/1000 > 150 ? '#1a1a2e' : '#f0f0f0';
+    }
+
+    function glow(color, big) {
+      const g = big ? 16 : 12;
+      const s = big ? 5 : 4;
+      if (!color) return '0 3px 10px rgba(0,0,0,0.4)';
+      return `0 3px 10px rgba(0,0,0,0.4), 0 0 ${g}px color-mix(in srgb, ${color} 55%, transparent), 0 0 ${s}px color-mix(in srgb, ${color} 35%, transparent)`;
+    }
+
+    function faceUp(w, h, color, rank, suit, red) {
+      const c = color ? ink(color) : (red ? '#c0392b' : '#1a1a2e');
+      return `<div style="width:${w}px;height:${h}px;border-radius:8px;background:#fff;position:relative;box-shadow:${glow(color,true)};color:${c}">
+        <div style="position:absolute;top:4px;left:5px;font-size:${w<50?9:11}px;font-weight:800;line-height:1">${rank}<br>${suit}</div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:${w<50?14:22}px">${suit}</div>
+        <div style="position:absolute;bottom:4px;right:5px;font-size:${w<50?9:11}px;font-weight:800;line-height:1;transform:rotate(180deg)">${rank}<br>${suit}</div>
+      </div>`;
+    }
+
+    function faceDown(w, h, color) {
+      if (!color) {
+        return `<div style="width:${w}px;height:${h}px;border-radius:8px;background:linear-gradient(135deg,#1e4a8a,#1a3a6e);border:2px solid #2a5aae;box-shadow:0 3px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:${w*0.28}px;color:rgba(255,255,255,0.25)">♠</div>`;
+      }
+      return `<div style="width:${w}px;height:${h}px;border-radius:8px;background:linear-gradient(145deg,color-mix(in srgb,${color} 62%,#1a2a4a),color-mix(in srgb,${color} 38%,#0f1f3a));border:2px solid color-mix(in srgb,${color} 72%,#2a5aae);box-shadow:${glow(color,true)};display:flex;align-items:center;justify-content:center;font-size:${w*0.28}px;color:rgba(255,255,255,0.35)">♠</div>`;
+    }
+
+    function pair(color, w, h) {
+      return `<div style="display:flex;gap:10px;align-items:center">${faceUp(w,h,color,'K','♠',false)}${faceDown(w*0.9,h*0.9,color)}</div>`;
+    }
+
+    // Compare section
+    document.getElementById('compare').innerHTML = `
+      <div class="compare-item">
+        ${faceUp(70,95,null,'A','♥',true)}
+        <div class="compare-label">Default · no glow</div>
+      </div>
+      <div class="compare-item">
+        ${pair('#F1C40F', 70, 95)}
+        <div class="compare-label" style="color:#F1C40F">Gold 1 · glow + back</div>
+      </div>
+    `;
+
+    // Hand fan
+    const suits = ['♠','♥','♦','♣'];
+    const ranks = ['A','10','7','4','2'];
+    document.getElementById('handFan').innerHTML = ranks.map((r,i) => `
+      <div class="card-wrap" style="z-index:${i};transform:rotate(${(i-2)*4}deg)">
+        ${faceUp(56,78,'#F1C40F',r,suits[i],suits[i]==='♥'||suits[i]==='♦')}
+      </div>
+    `).join('');
+
+    // Trick
+    document.getElementById('trickRow').innerHTML = [
+      { name: 'You', color: '#F1C40F', r: 'Q', s: '♠' },
+      { name: 'BOT Vitality', color: null, r: '8', s: '♣' },
+      { name: 'Alex', color: '#A29BFE', r: 'K', s: '♥' },
+    ].map((p) => `
+      <div class="trick-item">
+        ${faceUp(64,88,p.color,p.r,p.s,p.s==='♥'||p.s==='♦')}
+        <div class="trick-player">${p.name}</div>
+      </div>
+    `).join('');
+
+    // Tier grid
+    document.getElementById('tierGrid').innerHTML = TIERS.map((t) => `
+      <div class="tier-row">
+        <span class="tier-name" style="color:${t.color}">${t.name}</span>
+        ${pair(t.color, 52, 72)}
+        <span style="font-size:9px;color:rgba(255,255,255,0.35)">face + back</span>
+      </div>
+    `).join('');
+  </script>
+</body>
+</html>
