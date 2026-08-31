@@ -45,6 +45,16 @@ export interface SeasonReward {
   statValue?: number | null;
 }
 
+export interface SeasonRewardsGroup {
+  seasonId: number;
+  seasonName: string;
+  status: SeasonStatus;
+  rewardsTracked: boolean;
+  rewards: SeasonReward[];
+}
+
+export const MIN_RANKED_GAMES_FOR_REWARDS = 5;
+
 export const REWARD_LABELS: Record<RewardSymbolType, string> = {
   SAND_CARD: 'Sand Card',
   BRONZE_CARD: 'Bronze Card',

@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { getMyHistory, getUserHistory, getUserProfile } from '../services/authApi';
-import { getMySeasonRewards, listSeasons } from '../services/seasonApi';
+import { getAllMySeasonRewards, getCurrentSeason } from '../services/seasonApi';
 import type { MatchHistoryEntry, PublicUserProfile } from '../types/auth';
-import type { SeasonReward, SeasonSummary } from '../types/season';
-import { REWARD_LABELS } from '../types/season';
+import type { CurrentSeason, SeasonRewardsGroup } from '../types/season';
+import { MIN_RANKED_GAMES_FOR_REWARDS } from '../types/season';
 import MatchHistoryCard from '../components/MatchHistoryCard';
+import RewardBadge, { isAwardBadge, isTierCard } from '../components/RewardBadge';
 import TierBadge from '../components/TierBadge';
 import RejoinGameBanner from '../components/RejoinGameBanner';
 import { tierColor } from '../constants/tiers';
@@ -24,8 +25,8 @@ export default function ProfilePage() {
   const [otherProfile, setOtherProfile] = useState<PublicUserProfile | null>(null);
   const [loadingOther, setLoadingOther] = useState(false);
   const [tab, setTab] = useState<ProfileTab>('rewards');
-  const [seasons, setSeasons] = useState<SeasonSummary[]>([]);
-  const [rewards, setRewards] = useState<SeasonReward[]>([]);
+  const [rewardGroups, setRewardGroups] = useState<SeasonRewardsGroup[]>([]);
+  const [currentSeason, setCurrentSeason] = useState<CurrentSeason | null>(null);
 
   const viewingUserId = userIdParam ? Number(userIdParam) : currentUser?.id;
   const isOwnProfile = !userIdParam || viewingUserId === currentUser?.id;
@@ -58,16 +59,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!isOwnProfile) return;
-    listSeasons().then(setSeasons).catch(() => setSeasons([]));
+    Promise.all([
+      getAllMySeasonRewards().catch(() => [] as SeasonRewardsGroup[]),
+      getCurrentSeason().catch(() => null),
+    ]).then(([groups, current]) => {
+      setRewardGroups(groups);
+      setCurrentSeason(current);
+    });
   }, [isOwnProfile]);
-
-  useEffect(() => {
-    if (!isOwnProfile) return;
-    const completed = seasons.find((s) => s.status === 'COMPLETED' && s.rewardsTracked);
-    const targetId = completed?.seasonId ?? seasons[0]?.seasonId;
-    if (!targetId) return;
-    getMySeasonRewards(targetId).then(setRewards).catch(() => setRewards([]));
-  }, [isOwnProfile, seasons]);
 
   if (!currentUser) return null;
 
@@ -223,17 +222,71 @@ export default function ProfilePage() {
         {(!isOwnProfile || tab === 'rewards') && isOwnProfile && (
           <section>
             <h2 style={styles.sectionTitle}>Season rewards</h2>
-            {rewards.length === 0 ? (
-              <p style={styles.muted}>No season rewards yet. Complete a tracked season to earn tier cards and awards.</p>
-            ) : (
-              <div style={styles.rewardList}>
-                {rewards.map((r) => (
-                  <div key={r.symbolType} style={styles.rewardRow}>
-                    {REWARD_LABELS[r.symbolType]}
-                    {r.statValue != null && <span style={styles.rewardVal}>{r.statValue}</span>}
-                  </div>
-                ))}
+            <p style={styles.rewardsNote}>
+              Tier cards and award badges unlock when a tracked season ends.
+              You need at least {MIN_RANKED_GAMES_FOR_REWARDS} ranked classic games that season.
+            </p>
+
+            {currentSeason
+              && (currentSeason.status === 'ACTIVE' || currentSeason.status === 'GRACE')
+              && currentSeason.rewardsTracked
+              && profile.gamesPlayed >= MIN_RANKED_GAMES_FOR_REWARDS
+              && !rewardGroups.some((g) => g.seasonId === currentSeason.seasonId && g.rewards.length > 0) && (
+              <div style={styles.seasonGroup}>
+                <div style={styles.seasonGroupHeader}>
+                  <h3 style={styles.seasonGroupTitle}>{currentSeason.name}</h3>
+                  <span style={styles.seasonGroupBadge}>In progress</span>
+                </div>
+                <p style={styles.subsectionLabel}>Your tier card (unlocks when season ends)</p>
+                <div style={styles.symbolGrid}>
+                  <RewardBadge symbol="GOLD_CARD" pending />
+                </div>
               </div>
+            )}
+
+            {rewardGroups.length === 0 ? (
+              <p style={styles.muted}>
+                {profile.gamesPlayed < MIN_RANKED_GAMES_FOR_REWARDS
+                  ? `Play ${MIN_RANKED_GAMES_FOR_REWARDS - profile.gamesPlayed} more ranked game${MIN_RANKED_GAMES_FOR_REWARDS - profile.gamesPlayed === 1 ? '' : 's'} to qualify for season rewards.`
+                  : 'No season rewards yet. Finish a tracked season to earn tier cards and awards.'}
+              </p>
+            ) : (
+              rewardGroups.map((group) => {
+                const tierRewards = group.rewards.filter((r) => isTierCard(r.symbolType));
+                const awardRewards = group.rewards.filter((r) => isAwardBadge(r.symbolType));
+                return (
+                  <div key={group.seasonId} style={styles.seasonGroup}>
+                    <div style={styles.seasonGroupHeader}>
+                      <h3 style={styles.seasonGroupTitle}>
+                        <Link to={`/seasons/${group.seasonId}`} style={styles.seasonLink}>
+                          {group.seasonName}
+                        </Link>
+                      </h3>
+                      <span style={styles.seasonGroupBadge}>{group.status}</span>
+                    </div>
+                    {tierRewards.length > 0 && (
+                      <>
+                        <p style={styles.subsectionLabel}>Tier card</p>
+                        <div style={styles.symbolGrid}>
+                          {tierRewards.map((r) => (
+                            <RewardBadge key={r.symbolType} symbol={r.symbolType} statValue={r.statValue} />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {awardRewards.length > 0 && (
+                      <>
+                        <p style={styles.subsectionLabel}>Award badges</p>
+                        <div style={styles.symbolGrid}>
+                          {awardRewards.map((r) => (
+                            <RewardBadge key={r.symbolType} symbol={r.symbolType} statValue={r.statValue} />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })
             )}
             <Link to="/seasons" style={styles.link}>View all seasons →</Link>
           </section>
@@ -313,12 +366,17 @@ const styles: Record<string, React.CSSProperties> = {
   tabBtnActive: {
     background: 'rgba(116,198,157,0.15)', borderColor: 'rgba(116,198,157,0.4)', color: '#fff',
   },
-  rewardList: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 },
-  rewardRow: {
-    display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'rgba(255,255,255,0.8)',
-    background: 'rgba(0,0,0,0.15)', borderRadius: 8, padding: '8px 10px',
+  rewardsNote: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, lineHeight: 1.45 },
+  seasonGroup: { marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.08)' },
+  seasonGroupHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  seasonGroupTitle: { margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' },
+  seasonLink: { color: '#fff', textDecoration: 'none' },
+  seasonGroupBadge: {
+    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+    color: 'rgba(255,255,255,0.45)',
   },
-  rewardVal: { color: 'rgba(255,255,255,0.45)' },
+  subsectionLabel: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 10 },
+  symbolGrid: { display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 },
   muted: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
   historyList: { display: 'flex', flexDirection: 'column', gap: 12 },
   link: { color: '#74c69d', fontSize: 14, fontWeight: 600, textDecoration: 'none' },
