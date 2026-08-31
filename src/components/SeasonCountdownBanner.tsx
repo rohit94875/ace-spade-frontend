@@ -22,8 +22,11 @@ function statusLabel(season: CurrentSeason): string {
   if (season.status === 'SCHEDULED') {
     return season.countdownMessage ?? 'New season starts soon';
   }
-        if (season.status === 'ACTIVE') {
-    return season.countdownMessage ?? 'Season ends tonight at midnight — finish your ranked games!';
+  if (season.status === 'ACTIVE') {
+    if (season.showCountdown) {
+      return season.countdownMessage ?? 'Season ends soon — finish your ranked games!';
+    }
+    return season.countdownMessage ?? "Ranked classic games count toward this season's rewards.";
   }
   return `Status: ${season.status}`;
 }
