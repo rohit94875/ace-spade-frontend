@@ -1,16 +1,7 @@
 import type { RewardSymbolType } from '../types/season';
 import { isTierCard, REWARD_LABELS } from '../types/season';
 import AwardIcon from './AwardIcon';
-
-const TIER_COLORS: Partial<Record<RewardSymbolType, string>> = {
-  SAND_CARD: '#c4a574',
-  BRONZE_CARD: '#cd7f32',
-  SILVER_CARD: '#bdc3c7',
-  GOLD_CARD: '#f1c40f',
-  PLATINUM_CARD: '#a8d8ea',
-  DIAMOND_CARD: '#85c1e9',
-  ACE_CARD: '#e74c3c',
-};
+import TierRewardCard from './TierRewardCard';
 
 export { isTierCard, isAwardBadge } from '../types/season';
 
@@ -22,38 +13,22 @@ interface Props {
 }
 
 export default function RewardBadge({ symbol, statValue, pending, compact }: Props) {
-  const tier = isTierCard(symbol);
-  const color = TIER_COLORS[symbol] ?? '#74c69d';
+  if (isTierCard(symbol)) {
+    return <TierRewardCard symbol={symbol} statValue={statValue} pending={pending} compact={compact} />;
+  }
 
   return (
     <div style={{ ...styles.item, ...(compact ? styles.itemCompact : {}) }}>
       <div style={{
         ...styles.badge,
-        ...(tier ? styles.tierCard : styles.awardBadge),
+        ...styles.awardBadge,
         ...(pending ? styles.pending : {}),
-        borderColor: tier ? color : 'rgba(255,255,255,0.15)',
-        background: tier ? `linear-gradient(145deg, ${color}33, rgba(0,0,0,0.35))` : 'rgba(0,0,0,0.25)',
+        borderColor: 'rgba(255,255,255,0.15)',
+        background: 'rgba(0,0,0,0.25)',
       }}>
-        {pending ? (
-          <>
-            <span style={styles.suit}>?</span>
-            <span style={styles.rank}>Pending</span>
-          </>
-        ) : tier ? (
-          <>
-            <span style={{ ...styles.suit, color }}>♠</span>
-            <span style={{ ...styles.rank, color: '#fff' }}>{REWARD_LABELS[symbol].replace(' Card', '')}</span>
-            {statValue != null && (
-              <span style={styles.sub}>{Math.round(statValue)} final MMR</span>
-            )}
-          </>
-        ) : (
-          <>
-            <AwardIcon symbol={symbol} size={compact ? 36 : 44} />
-            {statValue != null && (
-              <span style={styles.sub}>{formatStat(symbol, statValue)}</span>
-            )}
-          </>
+        <AwardIcon symbol={symbol} size={compact ? 36 : 44} />
+        {statValue != null && (
+          <span style={styles.sub}>{formatStat(symbol, statValue)}</span>
         )}
       </div>
       <span style={styles.caption}>
@@ -82,11 +57,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: 2,
   },
-  tierCard: { aspectRatio: '2.5 / 3.5' },
   awardBadge: { minHeight: 64 },
   pending: { opacity: 0.55, borderStyle: 'dashed' },
-  suit: { fontSize: 22, lineHeight: 1 },
-  rank: { fontSize: 11, fontWeight: 800, textAlign: 'center' },
   sub: { fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
   caption: { display: 'block', fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 6 },
 };

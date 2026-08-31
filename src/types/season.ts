@@ -1,4 +1,4 @@
-export type SeasonStatus = 'SCHEDULED' | 'ACTIVE' | 'GRACE' | 'COMPLETED';
+export type SeasonStatus = 'SCHEDULED' | 'ACTIVE' | 'COMPLETED';
 
 export type RewardSymbolType =
   | 'SAND_CARD' | 'BRONZE_CARD' | 'SILVER_CARD' | 'GOLD_CARD'

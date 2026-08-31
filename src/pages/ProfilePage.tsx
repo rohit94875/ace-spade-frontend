@@ -243,7 +243,7 @@ export default function ProfilePage() {
             </p>
 
             {isOwnProfile && currentSeason
-              && (currentSeason.status === 'ACTIVE' || currentSeason.status === 'GRACE')
+              && currentSeason.status === 'ACTIVE'
               && currentSeason.rewardsTracked
               && profile.gamesPlayed >= MIN_RANKED_GAMES_FOR_REWARDS
               && !rewardGroups.some((g) => g.seasonId === currentSeason.seasonId && g.rewards.length > 0) && (
@@ -252,7 +252,7 @@ export default function ProfilePage() {
                   <h3 style={styles.seasonGroupTitle}>{currentSeason.name}</h3>
                   <span style={styles.seasonGroupBadge}>In progress</span>
                 </div>
-                <p style={styles.subsectionLabel}>Your tier card (unlocks when season ends)</p>
+                <p style={styles.subsectionLabel}>Your rank card (unlocks when season ends)</p>
                 <div style={styles.symbolGrid}>
                   <RewardBadge symbol="GOLD_CARD" pending />
                 </div>
@@ -281,9 +281,15 @@ export default function ProfilePage() {
                       </h3>
                       <span style={styles.seasonGroupBadge}>{group.status}</span>
                     </div>
+                    {group.status === 'COMPLETED' && group.rewardsTracked && tierRewards.length === 0 && awardRewards.length > 0 && (
+                      <>
+                        <p style={styles.subsectionLabel}>Rank card</p>
+                        <p style={styles.muted}>Rank card not assigned yet for this season.</p>
+                      </>
+                    )}
                     {tierRewards.length > 0 && (
                       <>
-                        <p style={styles.subsectionLabel}>Tier card</p>
+                        <p style={styles.subsectionLabel}>Rank card</p>
                         <div style={styles.symbolGrid}>
                           {tierRewards.map((r) => (
                             <RewardBadge key={r.symbolType} symbol={r.symbolType} statValue={r.statValue} />

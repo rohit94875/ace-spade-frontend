@@ -16,9 +16,6 @@ function formatCountdown(totalSeconds: number) {
 }
 
 function statusLabel(season: CurrentSeason): string {
-  if (season.status === 'GRACE') {
-    return season.countdownMessage ?? 'Grace period — final games still count';
-  }
   if (season.status === 'SCHEDULED') {
     return season.countdownMessage ?? 'New season starts soon';
   }
@@ -32,7 +29,6 @@ function statusLabel(season: CurrentSeason): string {
 }
 
 function countdownTargetIso(season: CurrentSeason): string | null {
-  if (season.status === 'GRACE') return season.graceEndsAt;
   if (season.status === 'SCHEDULED') return season.startsAt;
   if (season.status === 'ACTIVE') return season.endsAt;
   return null;
@@ -45,7 +41,7 @@ function shouldShowTimer(season: CurrentSeason, secondsLeft: number): boolean {
   const ms = new Date(target).getTime() - Date.now();
   if (ms <= 0) return false;
   const fourDaysMs = 4 * 24 * 60 * 60 * 1000;
-  if (season.status === 'SCHEDULED' || season.status === 'GRACE') return ms <= fourDaysMs;
+  if (season.status === 'SCHEDULED') return ms <= fourDaysMs;
   if (season.status === 'ACTIVE') return ms <= fourDaysMs;
   return false;
 }
@@ -101,13 +97,12 @@ export default function SeasonCountdownBanner({ compact = false }: Props) {
 
   const showTimer = shouldShowTimer(season, secondsLeft);
   const { d, h, m, s } = formatCountdown(secondsLeft);
-  const grace = season.status === 'GRACE';
-  const urgent = showTimer || grace;
+  const urgent = showTimer;
 
   return (
     <div style={{
       ...styles.banner,
-      ...(urgent ? (grace ? styles.bannerGrace : styles.bannerWarn) : styles.bannerCalm),
+      ...(urgent ? styles.bannerWarn : styles.bannerCalm),
       ...(compact ? styles.bannerCompact : {}),
     }}>
       <div style={styles.left}>
@@ -151,10 +146,6 @@ const styles: Record<string, React.CSSProperties> = {
   bannerWarn: {
     background: 'rgba(241, 196, 15, 0.12)',
     border: '1px solid rgba(241, 196, 15, 0.35)',
-  },
-  bannerGrace: {
-    background: 'rgba(231, 76, 60, 0.1)',
-    border: '1px solid rgba(231, 76, 60, 0.35)',
   },
   bannerCompact: {
     padding: '8px 12px',

@@ -74,13 +74,6 @@ export default function SeasonsPage() {
                   </span>
                   <h1 style={styles.title}>{detail.name}</h1>
                   <p style={styles.dateRange}>{formatSeasonRange(detail.startsAt, detail.endsAt)}</p>
-                  {detail.status === 'GRACE' && detail.graceEndsAt && (
-                    <p style={styles.graceNote}>
-                      Grace until {new Date(detail.graceEndsAt).toLocaleString(undefined, {
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                      })} IST
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -97,7 +90,7 @@ export default function SeasonsPage() {
                 </div>
               )}
 
-              {(detail.status === 'ACTIVE' || detail.status === 'GRACE') && leaderboard.length > 0 && (
+              {detail.status === 'ACTIVE' && leaderboard.length > 0 && (
                 <section style={styles.section}>
                   <h2 style={styles.sectionTitle}>Classic leaderboard</h2>
                   <table style={styles.table}>
