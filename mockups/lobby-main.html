@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lobby (Main) — Ace Spade Mockup</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .lobby-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 28px 22px;
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .top-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      font-size: 12px;
+    }
+
+    .top-nav a { color: var(--accent); text-decoration: none; font-weight: 600; }
+
+    .profile-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(241, 196, 15, 0.12);
+      border: 1px solid rgba(241, 196, 15, 0.35);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 12px;
+      text-decoration: none;
+    }
+
+    .profile-btn:hover { background: rgba(241, 196, 15, 0.2); text-decoration: none; }
+
+    .profile-avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(241, 196, 15, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .game-title {
+      text-align: center;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin: 8px 0 4px;
+    }
+
+    .game-sub {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .season-strip {
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      font-size: 11px;
+      color: var(--gold);
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .mode-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 16px;
+      padding: 4px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+    }
+
+    .mode-btn {
+      padding: 10px 6px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .mode-btn.active { background: #2d6a4f; color: #fff; }
+    .mode-btn.solo.active { background: linear-gradient(135deg, #c9a227, #a67c00); color: #1a1a1a; }
+
+    .input-fake {
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+
+    .hero-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #0d2b1a;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← All mockups</a>
+    <div class="page-header">
+      <h1>Main lobby — profile entry</h1>
+      <p>Logged-in home (<code>/</code>). Clear <strong>Profile</strong> button in the top bar opens <code>/profile</code>.</p>
+    </div>
+
+    <div class="card" style="padding:16px;background:transparent;border:none;max-width:460px;">
+      <div class="lobby-card">
+        <div class="top-nav">
+          <a href="profile-rewards.html" class="profile-btn">
+            <span class="profile-avatar">C</span>
+            Profile
+          </a>
+          <a href="#">Leaderboard</a>
+          <a href="seasons-history.html">Seasons</a>
+          <span style="color:var(--gold);font-weight:600;">Gold 2 · 1584</span>
+        </div>
+
+        <div class="season-strip">Season 2 ends in 3d 14h · <a href="seasons-history.html" style="color:var(--accent);">Rewards</a></div>
+
+        <h2 class="game-title">♠ Ace Spade</h2>
+        <p class="game-sub">Trick-taking with friends</p>
+
+        <div class="mode-switch">
+          <button class="mode-btn solo active">Solo</button>
+          <button class="mode-btn">Join</button>
+          <button class="mode-btn">Create</button>
+        </div>
+
+        <div class="input-fake">Nickname</div>
+        <button class="hero-btn">Play vs BOT Vitality</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px;">Profile button behaviour</h3>
+      <ul style="font-size:13px;color:var(--text-muted);padding-left:18px;line-height:1.6;">
+        <li>Always visible when logged in (top of lobby card).</li>
+        <li>Shows avatar initial + "Profile" label — not buried in small links.</li>
+        <li>Opens <code>/profile</code> with <strong>Rewards</strong> and <strong>Past games</strong> tabs (see profile mockup).</li>
+        <li>MMR/tier can stay as secondary text next to nav links.</li>
+      </ul>
+    </div>
+
+    <div class="mockup-note">
+      Today the lobby has leaderboard links but profile is easy to miss. This adds a dedicated Profile chip in the auth bar.
+    </div>
+  </div>
+</body>
+</html>

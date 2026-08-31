@@ -36,7 +36,7 @@ export default function LoginPage() {
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.btn} type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</button>
         <p style={styles.linkRow}>No account? <Link to="/register" style={styles.link}>Register</Link></p>
-        <Link to="/" style={styles.back}>← Back to lobby</Link>
+        <Link to="/leaderboard" style={styles.back}>View leaderboard</Link>
       </motion.form>
     </div>
   );

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { PlayerDto } from '../types/game';
 import { RatingDelta } from '../types/auth';
 import { RoundHistoryEntry } from '../store/gameStore';
+import { formatRoundScore, roundScoreColor } from '../utils/scoring';
 
 interface RoundSummaryData {
   round: number;
@@ -58,7 +59,7 @@ export default function RoundSummary({ data, players, roundHistory, onDismiss }:
               <th style={styles.th}>Player</th>
               <th style={styles.th}>Bid</th>
               <th style={styles.th}>Won</th>
-              <th style={styles.th}>+Score</th>
+              <th style={styles.th}>Score</th>
               <th style={styles.th}>Total</th>
             </tr>
           </thead>
@@ -76,8 +77,8 @@ export default function RoundSummary({ data, players, roundHistory, onDismiss }:
                   <td style={{ ...styles.td, color: hit ? '#74c69d' : '#e74c3c' }}>
                     {won} {hit ? '✓' : '✗'}
                   </td>
-                  <td style={{ ...styles.td, color: earned > 0 ? '#74c69d' : 'rgba(255,255,255,0.4)' }}>
-                    +{earned}
+                  <td style={{ ...styles.td, color: roundScoreColor(earned, hit) }}>
+                    {formatRoundScore(earned)}
                   </td>
                   <td style={{ ...styles.td, fontWeight: 700, color: '#fff' }}>{total}</td>
                 </tr>
@@ -88,19 +89,23 @@ export default function RoundSummary({ data, players, roundHistory, onDismiss }:
 
         {data.gameOver && data.ratingUpdates && Object.keys(data.ratingUpdates).length > 0 && (
           <div style={styles.ratingBox}>
-            <p style={styles.historyTitle}>Ranked rating changes</p>
+            <p style={styles.historyTitle}>Ranked results</p>
             {players.map((p) => {
               const delta = data.ratingUpdates?.[p.id];
               if (!delta) return null;
-              const sign = delta.ratingDelta >= 0 ? '+' : '';
+              const up = delta.ratingDelta >= 0;
               return (
                 <div key={p.id} style={styles.ratingRow}>
                   <span>{p.username}</span>
-                  <span>{delta.ratingBefore.toFixed(1)} → {delta.ratingAfter.toFixed(1)}</span>
-                  <span style={{ color: delta.ratingDelta >= 0 ? '#74c69d' : '#e74c3c', fontWeight: 700 }}>
-                    {sign}{delta.ratingDelta.toFixed(1)}
+                  <span
+                    style={{ color: up ? '#74c69d' : '#e74c3c', fontWeight: 700 }}
+                    title={up ? 'Rank up' : 'Rank down'}
+                  >
+                    {up ? '▲ Rank up' : '▼ Rank down'}
                   </span>
-                  {delta.tier && <span style={{ color: '#f1c40f' }}>{delta.tier}</span>}
+                  {delta.tier
+                    ? <span style={{ color: '#f1c40f' }}>{delta.tier}</span>
+                    : <span style={{ color: 'rgba(255,255,255,0.5)' }}>Placement</span>}
                 </div>
               );
             })}

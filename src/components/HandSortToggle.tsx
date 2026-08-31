@@ -17,7 +17,7 @@ export default function HandSortToggle({ compact }: Props) {
         ...(sortHand ? styles.active : {}),
       }}
       onClick={toggleSortHand}
-      title={sortHand ? 'Hand sorted by suit and rank' : 'Sort hand by suit and rank'}
+      title={sortHand ? 'Hand sorted by suit, rank ascending' : 'Sort hand by suit and rank'}
     >
       {sortHand ? '⇅ Sorted' : '⇅ Sort'}
     </button>

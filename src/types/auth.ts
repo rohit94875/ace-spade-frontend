@@ -9,7 +9,12 @@ export interface UserProfile {
   placementRequired: number;
   gamesPlayed: number;
   seasonId: number;
+  leaveCount: number;
+  nextLeavePenaltyMmr: number;
 }
+
+/** Public profile view — no email. */
+export type PublicUserProfile = Omit<UserProfile, 'email'>;
 
 export interface AuthResponse {
   accessToken: string;
@@ -47,4 +52,11 @@ export interface MatchHistoryEntry {
   ratingAfter?: number;
   ratingDelta?: number;
   playedAt: string;
+  ranked?: boolean;
+  maxRounds?: number;
+  playerCount?: number;
+  placement?: number;
+  winnerUsername?: string;
+  winnerScore?: number;
+  opponents?: { username: string; score: number }[];
 }

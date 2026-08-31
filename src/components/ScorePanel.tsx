@@ -1,16 +1,27 @@
 import { useState } from 'react';
 import { PlayerDto } from '../types/game';
 import { RoundHistoryEntry } from '../store/gameStore';
+import type { GameMode } from '../constants/gameModes';
+import { gameModeLabel } from '../constants/gameModes';
+import { formatRoundScore, roundScoreColor, shouldHideRuthlessBids } from '../utils/scoring';
 
 interface Props {
   players: PlayerDto[];
   scores: Record<string, number>;
   round: number;
+  maxRounds: number;
   phase: string | null;
   roundHistory: RoundHistoryEntry[];
+  gameMode?: GameMode;
+  teamScores?: Record<string, number>;
+  team1Name?: string;
+  team2Name?: string;
+  ruthlessHidden?: boolean;
 }
 
-export default function ScorePanel({ players, scores, round, phase, roundHistory }: Props) {
+export default function ScorePanel({
+  players, scores, round, maxRounds, phase, roundHistory, gameMode, teamScores, team1Name, team2Name, ruthlessHidden,
+}: Props) {
   const [showHistory, setShowHistory] = useState(false);
 
   const sorted = [...players].sort(
@@ -22,8 +33,20 @@ export default function ScorePanel({ players, scores, round, phase, roundHistory
       {/* Header */}
       <div style={styles.header}>
         <span style={styles.title}>Scoreboard</span>
-        <span style={styles.round}>Round {round}/13</span>
+        <span style={styles.round}>Round {round}/{maxRounds}</span>
       </div>
+
+      {gameMode && gameMode !== 'CLASSIC' && (
+        <div style={styles.modeRow}>{gameModeLabel(gameMode)}</div>
+      )}
+
+      {gameMode === 'CLAN_BATTLE' && teamScores && (
+        <div style={styles.teamRow}>
+          <span style={styles.teamBlue}>🔵 {team1Name ?? 'Team 1'}: {teamScores['1'] ?? 0}</span>
+          <span style={styles.teamVs}>vs</span>
+          <span style={styles.teamRed}>🔴 {team2Name ?? 'Team 2'}: {teamScores['2'] ?? 0}</span>
+        </div>
+      )}
 
       <div style={styles.phaseRow}>
         <span style={{ ...styles.phaseBadge, background: phaseColor(phase) }}>
@@ -50,7 +73,11 @@ export default function ScorePanel({ players, scores, round, phase, roundHistory
                 {p.currentTurn && <span style={styles.turnDot} />}
                 {p.username}
               </td>
-              <td style={styles.td}>{p.bid ?? '–'}</td>
+              <td style={styles.td}>
+                {ruthlessHidden && shouldHideRuthlessBids(phase) && p.bid == null && p.bidPlaced
+                  ? '✓'
+                  : (p.bid ?? '–')}
+              </td>
               <td style={styles.td}>{p.tricksWon}</td>
               <td style={{ ...styles.td, fontWeight: 700, color: '#74c69d' }}>
                 {scores[p.id] ?? 0}
@@ -100,12 +127,12 @@ export default function ScorePanel({ players, scores, round, phase, roundHistory
                             style={{
                               ...styles.td,
                               fontSize: 11,
-                              color: hit ? '#74c69d' : 'rgba(255,255,255,0.4)',
+                              color: roundScoreColor(earned, hit),
                               textAlign: 'center' as const,
                             }}
                             title={`Bid ${bid}, Won ${won}`}
                           >
-                            {earned > 0 ? `+${earned}` : '0'}
+                            {formatRoundScore(earned)}
                           </td>
                         );
                       })}
@@ -144,6 +171,14 @@ const styles: Record<string, React.CSSProperties> = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   title: { fontWeight: 700, fontSize: 15, color: '#fff' },
   round: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+  modeRow: { fontSize: 11, color: '#f1c40f', fontWeight: 700, marginBottom: 6 },
+  teamRow: {
+    display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10,
+    marginBottom: 8, fontSize: 14, fontWeight: 800,
+  },
+  teamBlue: { color: '#3498db' },
+  teamRed: { color: '#e74c3c' },
+  teamVs: { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
   phaseRow: { marginBottom: 12 },
   phaseBadge: {
     fontSize: 11, padding: '2px 8px', borderRadius: 6,

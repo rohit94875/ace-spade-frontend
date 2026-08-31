@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import type { PlayerDto, PlayerPresenceDto } from '../types/game';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import TierBadge from './TierBadge';
 
 interface Props {
   players: PlayerDto[];
   presence: Record<string, PlayerPresenceDto>;
   myPlayerId: string | null;
   graceSeconds: number;
+  botVotes?: Record<string, string[]>;
+  onVoteBot?: (targetPlayerId: string) => void;
 }
 
 function formatCountdown(expiresAt: number): string {
@@ -16,7 +19,7 @@ function formatCountdown(expiresAt: number): string {
   return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
 }
 
-export default function PresenceBar({ players, presence, myPlayerId }: Props) {
+export default function PresenceBar({ players, presence, myPlayerId, botVotes, onVoteBot }: Props) {
   const [, tick] = useState(0);
   const isMobile = useMediaQuery('(max-width: 640px)');
 
@@ -36,10 +39,20 @@ export default function PresenceBar({ players, presence, myPlayerId }: Props) {
           const status = pr?.status ?? p.presenceStatus ?? (p.connected ? 'ONLINE' : 'DISCONNECTED');
           const isMe = p.id === myPlayerId;
           const graceExpires = pr?.graceExpiresAt ?? p.graceExpiresAt;
+          const turnTimeoutAt = pr?.turnTimeoutAt;
+          const autoPlayCount = pr?.autoPlayCount ?? p.autoPlayCount ?? 0;
+          const isAway = status === 'AWAY' || status === 'DISCONNECTED' || (!pr?.connected && !p.connected && status !== 'ONLINE');
+          const voteEligible = isAway && autoPlayCount >= 2 && !p.bot && p.id !== myPlayerId;
+          const votes = botVotes?.[p.id] ?? [];
+          const iVoted = myPlayerId ? votes.includes(myPlayerId) : false;
 
           let detail = 'Online';
           let color = '#2ecc71';
-          if (status === 'GRACE' && graceExpires) {
+          if (status === 'AWAY') {
+            // Away but not disruptive; if it's their turn we show the auto-play countdown.
+            detail = turnTimeoutAt ? `Away · auto in ${formatCountdown(turnTimeoutAt)}` : 'Away';
+            color = turnTimeoutAt ? '#e67e22' : '#95a5a6';
+          } else if (status === 'GRACE' && graceExpires) {
             detail = formatCountdown(graceExpires);
             color = '#e67e22';
           } else if (status === 'PAUSED') {
@@ -56,10 +69,29 @@ export default function PresenceBar({ players, presence, myPlayerId }: Props) {
           return (
             <div key={p.id} style={styles.chip}>
               <span style={{ ...styles.dot, background: color }} />
+              {!p.bot && <TierBadge tier={p.tier} size="sm" />}
               <span style={styles.name}>
                 {p.username}{isMe ? ' (you)' : ''}
               </span>
               <span style={{ ...styles.status, color }}>{detail}</span>
+              {autoPlayCount > 0 && (
+                <span style={styles.autoBadge} title="Turns auto-played while away">
+                  auto ×{autoPlayCount}
+                </span>
+              )}
+              {voteEligible && onVoteBot && (
+                <button
+                  type="button"
+                  style={{
+                    ...styles.voteBtn,
+                    ...(iVoted ? styles.voteBtnActive : {}),
+                  }}
+                  title="Vote to replace with BOT Vitality"
+                  onClick={() => onVoteBot(p.id)}
+                >
+                  {iVoted ? 'Voted' : 'Vote bot'}
+                </button>
+              )}
             </div>
           );
         })}
@@ -114,4 +146,27 @@ const styles: Record<string, React.CSSProperties> = {
   dot: { width: 7, height: 7, borderRadius: '50%' },
   name: { color: '#fff', fontWeight: 600 },
   status: { fontSize: 11, fontWeight: 600 },
+  autoBadge: {
+    fontSize: 10,
+    fontWeight: 800,
+    color: '#fff',
+    background: '#e74c3c',
+    borderRadius: 8,
+    padding: '1px 6px',
+    letterSpacing: 0.3,
+  },
+  voteBtn: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: '#fff',
+    background: 'rgba(231,76,60,0.35)',
+    border: '1px solid rgba(231,76,60,0.6)',
+    borderRadius: 8,
+    padding: '2px 8px',
+    cursor: 'pointer',
+  },
+  voteBtnActive: {
+    background: '#c0392b',
+    borderColor: '#c0392b',
+  },
 };

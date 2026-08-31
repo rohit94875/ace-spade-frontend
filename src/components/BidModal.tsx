@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, PlayerDto } from '../types/game';
 import { sendBid } from '../services/websocket';
 import { useDisplayStore } from '../store/displayStore';
 import { orderHand } from '../utils/cardDisplay';
+import { formatBidScoreHint } from '../utils/scoring';
 import CardComponent from './CardComponent';
 import HandSortToggle from './HandSortToggle';
 
@@ -13,17 +14,39 @@ interface Props {
   hand: Card[];
   players: PlayerDto[];
   myPlayerId: string;
+  faceColor?: string | null;
+  ruthlessHidden?: boolean;
   onBid?: () => void;
 }
 
-export default function BidModal({ round, roomCode, hand, players, myPlayerId, onBid }: Props) {
+export default function BidModal({
+  round, roomCode, hand, players, myPlayerId, faceColor, ruthlessHidden, onBid,
+}: Props) {
   const [bid, setBid] = useState(0);
+  const [confirmReady, setConfirmReady] = useState(false);
+  const [cooldownSec, setCooldownSec] = useState(2);
   const sortHand = useDisplayStore((s) => s.sortHand);
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
-  const otherBids = players.filter((p) => p.id !== myPlayerId && p.bid !== null);
+  const otherBids = ruthlessHidden
+    ? players.filter((p) => p.id !== myPlayerId && p.bidPlaced)
+    : players.filter((p) => p.id !== myPlayerId && p.bid !== null);
   const visibleHand = orderHand(hand, sortHand);
 
+  useEffect(() => {
+    setConfirmReady(false);
+    setCooldownSec(2);
+    const unlockTimer = setTimeout(() => setConfirmReady(true), 2000);
+    const tickTimer = setInterval(() => {
+      setCooldownSec((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => {
+      clearTimeout(unlockTimer);
+      clearInterval(tickTimer);
+    };
+  }, [round, roomCode]);
+
   function handleBid() {
+    if (!confirmReady) return;
     sendBid(roomCode, bid);
     onBid?.();
   }
@@ -43,8 +66,14 @@ export default function BidModal({ round, roomCode, hand, players, myPlayerId, o
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
       >
-        <h2 style={styles.title}>Place Your Bid</h2>
-        <p style={styles.sub}>Round {round} — How many tricks will you win? (0–{round})</p>
+        <h2 style={styles.title}>
+          {ruthlessHidden ? 'Place Your Bid (hidden)' : 'Place Your Bid'}
+        </h2>
+        <p style={styles.sub}>
+          Round {round} — How many tricks will you win? (0–{round})
+          {ruthlessHidden && ' · Opponents won\'t see your bid until the round ends.'}
+          {ruthlessHidden && ' · Miss your bid → negative of the hit value (e.g. bid 1 → +21 or -21).'}
+        </p>
 
         <div style={styles.bidsSection}>
           <p style={styles.bidsLabel}>Bids so far</p>
@@ -60,7 +89,9 @@ export default function BidModal({ round, roomCode, hand, players, myPlayerId, o
                     {p.username}
                   </span>
                   <span style={styles.bidAmount}>
-                    {p.bid} trick{p.bid !== 1 ? 's' : ''}
+                    {ruthlessHidden
+                      ? '✓ placed'
+                      : `${p.bid} trick${p.bid !== 1 ? 's' : ''}`}
                   </span>
                 </div>
               ))}
@@ -81,6 +112,7 @@ export default function BidModal({ round, roomCode, hand, players, myPlayerId, o
                   <CardComponent
                     key={`${card.suit}-${card.rank}-${card.deckIndex}`}
                     card={card}
+                    faceColor={faceColor}
                   />
                 ))}
               </div>
@@ -104,19 +136,26 @@ export default function BidModal({ round, roomCode, hand, players, myPlayerId, o
             >
               <span style={styles.bidNumber}>{n}</span>
               <span style={styles.scoreHint}>
-                {n === 0 ? '+10' : `+${10 + n * 11}`}
+                {formatBidScoreHint(n, Boolean(ruthlessHidden))}
               </span>
             </motion.button>
           ))}
         </div>
 
         <motion.button
-          style={styles.confirmBtn}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
+          type="button"
+          style={{
+            ...styles.confirmBtn,
+            ...(!confirmReady ? styles.confirmBtnDisabled : {}),
+          }}
+          disabled={!confirmReady}
+          whileHover={confirmReady ? { scale: 1.03 } : {}}
+          whileTap={confirmReady ? { scale: 0.97 } : {}}
           onClick={handleBid}
         >
-          Confirm Bid: {bid} trick{bid !== 1 ? 's' : ''}
+          {confirmReady
+            ? `Confirm Bid: ${bid} trick${bid !== 1 ? 's' : ''}`
+            : `Review your hand… (${cooldownSec || 1}s)`}
         </motion.button>
       </motion.div>
     </motion.div>
@@ -231,5 +270,11 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
     color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer',
     boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+  },
+  confirmBtnDisabled: {
+    background: 'rgba(255,255,255,0.12)',
+    color: 'rgba(255,255,255,0.45)',
+    cursor: 'not-allowed',
+    boxShadow: 'none',
   },
 };

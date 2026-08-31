@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import {
-  Card, GamePhase, MaxRounds, PlayerDto, RoomStateDto, TrickCard,
+  Card, GamePhase, PlayerDto, RoomStateDto, TrickCard,
   TrickEndedPayload, RoundEndedPayload, GameEvent,
   ChatMessageDto, PlayerPresenceDto, SessionResumeResponse,
+  SpectatorDto,
 } from '../types/game';
+import { normalizeMaxRounds, CASUAL_MAX_ROUNDS, type MaxRounds } from '../constants/gameLength';
 import { saveSession, clearSession, StoredSession } from '../services/sessionStorage';
 
 export interface RoundHistoryEntry {
@@ -62,6 +64,14 @@ interface GameStore {
   graceSeconds: number;
   chatMessages: ChatMessageDto[];
   turnAlert: string | null;
+  isSpectator: boolean;
+  spectators: SpectatorDto[];
+  botVotes: Record<string, string[]>;
+  gameMode: import('../constants/gameModes').GameMode;
+  teamScores: Record<string, number>;
+  team1Name: string;
+  team2Name: string;
+  kickedFromLobby: boolean;
 
   setSession: (data: {
     playerId: string;
@@ -72,9 +82,11 @@ interface GameStore {
     playWithBot?: boolean;
     ranked?: boolean;
     autoStartGame?: boolean;
+    isSpectator?: boolean;
   }) => void;
   applyResume: (res: SessionResumeResponse, stored: StoredSession) => void;
   applySnapshot: (res: SessionResumeResponse) => void;
+  syncRoomFromDto: (room: RoomStateDto) => void;
   setWsConnected: (v: boolean) => void;
   handleGameEvent: (event: GameEvent) => void;
   setHand: (hand: Card[]) => void;
@@ -93,7 +105,7 @@ const initialState = {
   isHost: false,
   phase: null as GamePhase | null,
   round: 0,
-  maxRounds: 13 as MaxRounds,
+  maxRounds: CASUAL_MAX_ROUNDS as MaxRounds,
   players: [] as PlayerDto[],
   hand: [] as Card[],
   currentTrick: [] as TrickCard[],
@@ -114,6 +126,14 @@ const initialState = {
   graceSeconds: 120,
   chatMessages: [] as ChatMessageDto[],
   turnAlert: null as string | null,
+  isSpectator: false,
+  spectators: [] as SpectatorDto[],
+  botVotes: {} as Record<string, string[]>,
+  gameMode: 'CLASSIC' as import('../constants/gameModes').GameMode,
+  teamScores: {} as Record<string, number>,
+  team1Name: 'Blue Clan',
+  team2Name: 'Red Clan',
+  kickedFromLobby: false,
 };
 
 function applyRoomState(
@@ -127,12 +147,18 @@ function applyRoomState(
     currentTurnPlayerId: room.currentTurnPlayerId,
     hostPlayerId: room.hostPlayerId,
     round: room.round,
-    maxRounds: room.maxRounds === 10 ? 10 : 13,
+    maxRounds: normalizeMaxRounds(room.maxRounds),
     playWithBot: room.playWithBot ?? false,
     ranked: room.ranked ?? false,
     paused: room.paused ?? false,
     presence: room.presence ?? {},
     chatMessages: room.chatMessages ?? [],
+    spectators: room.spectators ?? [],
+    botVotes: room.botVotes ?? {},
+    gameMode: (room.gameMode as import('../constants/gameModes').GameMode) ?? 'CLASSIC',
+    teamScores: room.teamScores ?? {},
+    team1Name: room.team1Name ?? 'Blue Clan',
+    team2Name: room.team2Name ?? 'Red Clan',
     ...extra,
   };
 }
@@ -148,6 +174,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       roomCode: data.roomCode,
       isHost: data.isHost,
       playWithBot: data.playWithBot,
+      isSpectator: data.isSpectator,
     });
     set({
       playerId: data.playerId,
@@ -158,6 +185,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playWithBot: data.playWithBot ?? false,
       ranked: data.ranked ?? false,
       autoStartGame: data.autoStartGame ?? false,
+      isSpectator: data.isSpectator ?? false,
     });
   },
 
@@ -170,6 +198,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       username: res.username ?? stored.username,
       roomCode: res.roomCode ?? stored.roomCode,
       isHost: res.host ?? stored.isHost,
+      isSpectator: res.spectator ?? false,
       hand: res.hand ?? [],
       currentTrick: res.currentTrick ?? [],
       ...applyRoomState(room),
@@ -180,11 +209,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!res.valid || !res.room) return;
     const s = get();
     set({
-      hand: res.hand ?? s.hand,
+      isSpectator: res.spectator ?? s.isSpectator,
+      hand: res.spectator ? [] : (res.hand ?? s.hand),
       currentTrick: res.currentTrick ?? s.currentTrick,
       ...applyRoomState(res.room),
     });
   },
+
+  syncRoomFromDto: (room) => set(applyRoomState(room)),
 
   setWsConnected: (v) => set({ wsConnected: v }),
 
@@ -342,10 +374,36 @@ export const useGameStore = create<GameStore>((set, get) => ({
         });
         break;
 
+      case 'PLAYER_KICKED': {
+        const kickedId = payload['playerId'] as string;
+        if (kickedId === s.playerId) {
+          clearSession();
+          set({ ...initialState, kickedFromLobby: true });
+          break;
+        }
+        set({
+          players: s.players.filter((p) => p.id !== kickedId),
+        });
+        break;
+      }
+
       case 'BOT_TAKEOVER':
         set({
           players: (payload['players'] as PlayerDto[]) ?? [],
+          botVotes: (payload['botVotes'] as Record<string, string[]>) ?? s.botVotes,
           errorMessage: `${payload['botUsername'] ?? 'BOT Vitality'} took over the seat`,
+        });
+        break;
+
+      case 'PLAYER_READY':
+        set({
+          players: (payload['players'] as PlayerDto[]) ?? s.players,
+        });
+        break;
+
+      case 'BOT_VOTE_UPDATED':
+        set({
+          botVotes: (payload['botVotes'] as Record<string, string[]>) ?? s.botVotes,
         });
         break;
 
@@ -377,6 +435,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               connected: pr.connected,
               graceExpiresAt: pr.graceExpiresAt,
               presenceStatus: pr.status,
+              autoPlayCount: pr.autoPlayCount ?? p.autoPlayCount,
             };
           }),
         });

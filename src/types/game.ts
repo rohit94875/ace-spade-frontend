@@ -1,5 +1,7 @@
 export type DisconnectPolicy = 'FORFEIT_WIN' | 'BOT_TAKEOVER';
-export type MaxRounds = 10 | 13;
+
+import type { MaxRounds } from '../constants/gameLength';
+export type { MaxRounds };
 
 export type Suit = 'SPADES' | 'CLUBS' | 'HEARTS' | 'DIAMONDS';
 export type Rank =
@@ -35,9 +37,15 @@ export interface PlayerDto {
   graceExpiresAt?: number | null;
   lastSeenAt?: number;
   presenceStatus?: string;
+  autoPlayCount?: number;
+  ready?: boolean;
+  bidPlaced?: boolean;
+  teamId?: number | null;
+  /** Ranked tier badge after placement */
+  tier?: string | null;
 }
 
-export type PresenceStatus = 'ONLINE' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
+export type PresenceStatus = 'ONLINE' | 'AWAY' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
 
 export interface PlayerPresenceDto {
   playerId: string;
@@ -47,6 +55,9 @@ export interface PlayerPresenceDto {
   graceExpiresAt?: number | null;
   lastSeenAt: number;
   status: PresenceStatus;
+  autoPlayCount?: number;
+  /** Epoch millis when this away player's current turn will be auto-played. */
+  turnTimeoutAt?: number | null;
 }
 
 export interface ChatMessageDto {
@@ -54,7 +65,28 @@ export interface ChatMessageDto {
   playerId: string;
   username: string;
   text: string;
+  mentions?: string[];
   sentAt: number;
+}
+
+export interface SpectatorDto {
+  id: string;
+  username: string;
+  connected?: boolean;
+}
+
+export interface PublicRoomDto {
+  roomCode: string;
+  hostUsername: string;
+  playerCount: number;
+  maxPlayers: number;
+  ranked: boolean;
+  maxRounds: number;
+  playWithBot: boolean;
+  spectatable?: boolean;
+  phase?: string;
+  spectatorCount?: number;
+  gameMode?: string;
 }
 
 export interface SessionResumeResponse {
@@ -69,13 +101,15 @@ export interface SessionResumeResponse {
   chatMessages?: ChatMessageDto[];
   presence?: Record<string, PlayerPresenceDto>;
   message?: string;
+  spectator?: boolean;
 }
 
 export type EventType =
   | 'ROOM_UPDATED' | 'ROUND_STARTED' | 'BID_PHASE' | 'BID_PLACED'
   | 'PLAY_PHASE' | 'CARD_PLAYED' | 'TRICK_ENDED' | 'ROUND_ENDED'
-  | 'GAME_ENDED' | 'PLAYER_LEFT' | 'BOT_TAKEOVER' | 'GAME_PAUSED' | 'GAME_RESUMED'
-  | 'GAME_SNAPSHOT' | 'PRESENCE_UPDATED' | 'CHAT_MESSAGE' | 'ERROR';
+  | 'GAME_ENDED' | 'PLAYER_LEFT' | 'PLAYER_KICKED' | 'BOT_TAKEOVER' | 'GAME_PAUSED' | 'GAME_RESUMED'
+  | 'GAME_SNAPSHOT' | 'PRESENCE_UPDATED' | 'CHAT_MESSAGE' | 'ERROR'
+  | 'PLAYER_READY' | 'BOT_VOTE_UPDATED' | 'SPECTATOR_JOINED';
 
 export interface GameEvent {
   type: EventType;
@@ -98,6 +132,12 @@ export interface RoomStateDto {
   pausedByPlayerId?: string | null;
   chatMessages?: ChatMessageDto[];
   presence?: Record<string, PlayerPresenceDto>;
+  spectators?: SpectatorDto[];
+  botVotes?: Record<string, string[]>;
+  gameMode?: import('../constants/gameModes').GameMode | string;
+  teamScores?: Record<string, number>;
+  team1Name?: string;
+  team2Name?: string;
 }
 
 export interface HandUpdate {

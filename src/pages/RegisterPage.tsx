@@ -37,7 +37,7 @@ export default function RegisterPage() {
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.btn} type="submit" disabled={loading}>{loading ? 'Creating…' : 'Register'}</button>
         <p style={styles.linkRow}>Already have an account? <Link to="/login" style={styles.link}>Sign in</Link></p>
-        <Link to="/" style={styles.back}>← Back to lobby</Link>
+        <Link to="/login" style={styles.back}>← Back to sign in</Link>
       </motion.form>
     </div>
   );

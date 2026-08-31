@@ -1,20 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
-import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart } from '../services/websocket';
-import { getRoom } from '../services/api';
+import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart, sendReady, sendVoteBot, sendTeam, sendKick } from '../services/websocket';
+import { getRoom, updateNickname, updateRoomSettings } from '../services/api';
+import { saveNickname } from '../services/nicknameStorage';
+import { loadSession, saveSession } from '../services/sessionStorage';
 import type { RoomStateDto } from '../types/game';
-import PlayerHand from '../components/PlayerHand';
 import TrickArea from '../components/TrickArea';
 import OpponentHands from '../components/OpponentHands';
+import PlayerHand from '../components/PlayerHand';
 import ScorePanel from '../components/ScorePanel';
 import BidModal from '../components/BidModal';
 import RoundSummary from '../components/RoundSummary';
 import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
-import ActivityFeed from '../components/ActivityFeed';
 import GameHeader from '../components/GameHeader';
+import LobbyPanel from '../components/LobbyPanel';
+import TierBadge from '../components/TierBadge';
+import { tierCardFaceColor } from '../constants/tiers';
+import { useAuthStore } from '../store/authStore';
 import { useDisplayStore } from '../store/displayStore';
 
 export default function GamePage() {
@@ -25,15 +30,36 @@ export default function GamePage() {
     currentTurnPlayerId, hostPlayerId,
     roundHistory, lastTrick, roundSummary, errorMessage,
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
-    presence, graceSeconds, chatMessages, turnAlert,
-    handleGameEvent, setHand, dismissRoundSummary, clearError, clearTurnAlert, reset,
-    applySnapshot,
+    presence, graceSeconds, chatMessages,
+    isSpectator, spectators, botVotes, gameMode, teamScores, team1Name, team2Name,
+    kickedFromLobby, ranked,
+    handleGameEvent, setHand, dismissRoundSummary, clearError, reset,
+    applySnapshot, syncRoomFromDto,
   } = useGameStore();
 
+  const ruthlessHidden = gameMode === 'RUTHLESS_HIDDEN';
+  const isClanBattle = gameMode === 'CLAN_BATTLE';
+
   const [showBidModal, setShowBidModal] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState(username ?? '');
+  const [nicknameError, setNicknameError] = useState('');
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
+  const [hostSettingsError, setHostSettingsError] = useState('');
+  const [kickTarget, setKickTarget] = useState<{ id: string; username: string } | null>(null);
+  const [team1Draft, setTeam1Draft] = useState(team1Name);
+  const [team2Draft, setTeam2Draft] = useState(team2Name);
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
+  const authUser = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    setNicknameDraft(username ?? '');
+  }, [username]);
 
   const isMyTurn = currentTurnPlayerId === playerId;
+  // Host can transfer if the original host leaves the lobby, so always derive it
+  // from the live hostPlayerId rather than the value captured when we joined.
+  const amHost = hostPlayerId ? hostPlayerId === playerId : isHost;
 
   // Open bid modal when it's my turn during bidding (not while paused)
   useEffect(() => {
@@ -44,38 +70,51 @@ export default function GamePage() {
     }
   }, [phase, isMyTurn, paused]);
 
-  // Turn banner when it's your turn
+  // Haptic buzz + glow (handled in PlayerHand) when it becomes your turn.
   useEffect(() => {
     if (paused) return;
-    if (phase === 'BIDDING' && isMyTurn) {
-      useGameStore.setState({ turnAlert: 'Your turn to bid!' });
-    } else if (phase === 'PLAYING' && isMyTurn) {
-      useGameStore.setState({ turnAlert: 'Your turn to play!' });
-    } else if (!isMyTurn) {
-      clearTurnAlert();
+    const myTurnNow = isMyTurn && (phase === 'BIDDING' || phase === 'PLAYING');
+    if (myTurnNow && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate?.([120, 60, 120]);
     }
-  }, [phase, isMyTurn, paused, clearTurnAlert]);
+  }, [phase, isMyTurn, paused]);
 
-  // Load room state (players, bot, lobby phase)
+  useEffect(() => {
+    setTeam1Draft(team1Name);
+    setTeam2Draft(team2Name);
+  }, [team1Name, team2Name]);
+
+  useEffect(() => {
+    if (!kickedFromLobby) return;
+    navigate('/', { replace: true, state: { message: 'You were removed from the lobby by the host.' } });
+    useGameStore.setState({ kickedFromLobby: false });
+  }, [kickedFromLobby, navigate]);
+
+  // Load room state (players, mode, lobby phase)
   useEffect(() => {
     if (!roomCode) return;
     getRoom(roomCode)
-      .then((room: RoomStateDto) => {
-        useGameStore.setState({
-          phase: room.phase,
-          players: room.players,
-          scores: room.scores,
-          currentTurnPlayerId: room.currentTurnPlayerId,
-          hostPlayerId: room.hostPlayerId,
-          round: room.round,
-          maxRounds: room.maxRounds === 10 ? 10 : 13,
-          playWithBot: room.playWithBot ?? false,
-          paused: room.paused ?? false,
-          presence: room.presence ?? {},
-          chatMessages: room.chatMessages ?? [],
-        });
-      })
+      .then((room: RoomStateDto) => syncRoomFromDto(room))
       .catch(() => {});
+  }, [roomCode, syncRoomFromDto]);
+
+  // Mobile-friendly reconnect
+  useEffect(() => {
+    if (!roomCode) return;
+    const resync = () => {
+      if (document.visibilityState !== 'visible') return;
+      getRoom(roomCode)
+        .then((room: RoomStateDto) => syncRoomFromDto(room))
+        .catch(() => {});
+    };
+    window.addEventListener('visibilitychange', resync);
+    window.addEventListener('online', resync);
+    window.addEventListener('focus', resync);
+    return () => {
+      window.removeEventListener('visibilitychange', resync);
+      window.removeEventListener('online', resync);
+      window.removeEventListener('focus', resync);
+    };
   }, [roomCode]);
 
   // Connect to WebSocket on mount
@@ -123,14 +162,121 @@ export default function GamePage() {
   if (!roomCode || !playerId) return null;
 
   const myPlayer = players.find((p) => p.id === playerId);
+  const myTier = myPlayer?.tier ?? authUser?.tier ?? null;
+  const myFaceColor = tierCardFaceColor(myTier);
+  const humanPlayers = players.filter((p) => !p.bot);
+  const mentionableUsers = useMemo(() => {
+    const names = new Set<string>();
+    for (const p of players) {
+      if (!p.bot) names.add(p.username);
+    }
+    for (const s of spectators) names.add(s.username);
+    return [...names];
+  }, [players, spectators]);
+  const allHumansReady = humanPlayers.length > 0 && humanPlayers.every((p) => p.ready);
+  const skipReadyCheck = playWithBot && humanPlayers.length === 1;
+  const canStart = allHumansReady || skipReadyCheck;
   const isSoloBotGame =
     playWithBot &&
     players.length === 2 &&
     players.filter((p) => p.bot).length === 1;
   const canPause =
+    !isSpectator &&
     isSoloBotGame &&
     !paused &&
     (phase === 'BIDDING' || phase === 'PLAYING');
+
+  function buildInviteLink(): string {
+    const base = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`;
+    return `${window.location.origin}${base}?join=${roomCode}`;
+  }
+
+  async function handleShare() {
+    const url = buildInviteLink();
+    const shareData = {
+      title: 'Ace Spade',
+      text: `Join my Ace Spade room ${roomCode}`,
+      url,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      // user cancelled or share failed — fall back to copy
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMsg('Invite link copied!');
+    } catch {
+      setShareMsg(url);
+    }
+    setTimeout(() => setShareMsg(''), 2500);
+  }
+
+  async function handleUpdateNickname() {
+    const trimmed = nicknameDraft.trim();
+    if (trimmed.length < 2) {
+      setNicknameError('Nickname must be at least 2 characters');
+      return;
+    }
+    if (!roomCode || !sessionToken || trimmed === username) {
+      return;
+    }
+    setNicknameSaving(true);
+    setNicknameError('');
+    try {
+      const res = await updateNickname(roomCode, sessionToken, trimmed);
+      saveNickname(res.nickname);
+      useGameStore.setState({ username: res.nickname });
+      const stored = loadSession();
+      if (stored) {
+        saveSession({ ...stored, username: res.nickname });
+      }
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: string } })?.response?.data;
+      setNicknameError(typeof msg === 'string' ? msg : 'Could not update nickname');
+    } finally {
+      setNicknameSaving(false);
+    }
+  }
+
+  async function handleLobbyRoundsChange(value: number) {
+    if (!roomCode || !sessionToken) return;
+    if (!ranked && !isClanBattle) return;
+    setHostSettingsError('');
+    try {
+      const room = await updateRoomSettings(roomCode, sessionToken, { maxRounds: value });
+      syncRoomFromDto(room);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: string } })?.response?.data;
+      setHostSettingsError(typeof msg === 'string' ? msg : 'Could not update rounds');
+    }
+  }
+
+  async function handleSaveTeamNames() {
+    if (!roomCode || !sessionToken || !amHost) return;
+    setHostSettingsError('');
+    try {
+      const room = await updateRoomSettings(roomCode, sessionToken, {
+        team1Name: team1Draft.trim(),
+        team2Name: team2Draft.trim(),
+      });
+      syncRoomFromDto(room);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: string } })?.response?.data;
+      setHostSettingsError(typeof msg === 'string' ? msg : 'Could not save team names');
+    }
+  }
+
+  function handleKick() {
+    if (!roomCode || !kickTarget) return;
+    sendKick(roomCode, kickTarget.id);
+    setKickTarget(null);
+  }
 
   return (
     <div style={{
@@ -142,7 +288,8 @@ export default function GamePage() {
         round={round}
         maxRounds={maxRounds}
         username={username ?? ''}
-        isHost={isHost}
+        tier={myTier}
+        isHost={amHost}
         wsConnected={wsConnected}
         phase={phase}
         paused={paused}
@@ -160,20 +307,79 @@ export default function GamePage() {
         presence={presence}
         myPlayerId={playerId}
         graceSeconds={graceSeconds}
+        botVotes={botVotes}
+        onVoteBot={isSpectator ? undefined : (targetId) => sendVoteBot(roomCode, targetId)}
       />
+
+      {spectators.length > 0 && (
+        <div style={styles.spectatorBanner}>
+          👁 Watching: {spectators.map((s) => s.username).join(', ')}
+          <span style={{ opacity: 0.75 }}> ({spectators.length})</span>
+          {isSpectator ? ' · You are watching' : ''}
+        </div>
+      )}
 
       {/* Main layout */}
       <div style={styles.layout}>
         {/* Left: opponents + trick area */}
         <div style={styles.center}>
+          {phase === 'LOBBY' ? (
+            <LobbyPanel
+              roomCode={roomCode ?? ''}
+              players={players}
+              playerId={playerId ?? ''}
+              hostPlayerId={hostPlayerId}
+              amHost={amHost}
+              isSpectator={isSpectator}
+              ranked={ranked}
+              maxRounds={maxRounds}
+              gameMode={gameMode}
+              playWithBot={playWithBot}
+              isClanBattle={isClanBattle}
+              canStart={canStart}
+              allHumansReady={allHumansReady}
+              myReady={Boolean(myPlayer?.ready)}
+              team1Name={team1Name}
+              team2Name={team2Name}
+              team1Draft={team1Draft}
+              team2Draft={team2Draft}
+              nicknameDraft={nicknameDraft}
+              nicknameError={nicknameError}
+              nicknameSaving={nicknameSaving}
+              shareMsg={shareMsg}
+              hostSettingsError={hostSettingsError}
+              kickTarget={kickTarget}
+              onShare={handleShare}
+              onNicknameChange={setNicknameDraft}
+              onNicknameSave={handleUpdateNickname}
+              onTeam1Draft={setTeam1Draft}
+              onTeam2Draft={setTeam2Draft}
+              onSaveTeamNames={handleSaveTeamNames}
+              onPickTeam={(team) => sendTeam(roomCode!, team)}
+              onRoundsChange={handleLobbyRoundsChange}
+              onReady={() => sendReady(roomCode!, !myPlayer?.ready)}
+              onStart={() => canStart && sendStart(roomCode!)}
+              onKickRequest={(id, username) => setKickTarget({ id, username })}
+              onKickCancel={() => setKickTarget(null)}
+              onKickConfirm={handleKick}
+            />
+          ) : (
+            <>
           <OpponentHands
             players={players}
             myPlayerId={playerId}
             currentTurnPlayerId={currentTurnPlayerId}
             scores={scores}
+            ruthlessHidden={ruthlessHidden}
+            phase={phase}
           />
 
-          <TrickArea trick={currentTrick} />
+          <TrickArea
+            trick={currentTrick}
+            players={players}
+            myPlayerId={playerId}
+            myTier={myTier}
+          />
 
           {/* Last trick winner flash */}
           <AnimatePresence>
@@ -190,33 +396,14 @@ export default function GamePage() {
             )}
           </AnimatePresence>
 
-          {/* Lobby start button */}
-          {phase === 'LOBBY' && isHost && players.length >= 2 && (
-            <motion.button
-              style={styles.startBtn}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => sendStart(roomCode)}
-            >
-              🚀 Start Game ({players.length} players)
-            </motion.button>
-          )}
-
-          {phase === 'LOBBY' && isHost && players.length < 2 && (
-            <p style={styles.waitHint}>
-              Share room code <strong>{roomCode}</strong> — need at least 2 players, or create a room with BOT Vitality
-            </p>
-          )}
-
-          {phase === 'LOBBY' && !isHost && (
-            <p style={styles.waitHint}>Waiting for <strong>{players.find(p => p.id === hostPlayerId)?.username ?? 'host'}</strong> to start…</p>
-          )}
-
-          {/* My hand */}
-          {phase !== 'LOBBY' && (
+          {/* My hand (players only) */}
+          {!isSpectator && (
             <div>
-              <p style={styles.handLabel}>
-                Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
+              <p style={{ ...styles.handLabel, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <TierBadge tier={myTier} size="sm" />
+                <span>
+                  Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
+                </span>
               </p>
               <PlayerHand
                 hand={hand}
@@ -224,8 +411,11 @@ export default function GamePage() {
                 isMyTurn={isMyTurn && !paused}
                 roomCode={roomCode}
                 currentTrick={currentTrick}
+                faceColor={myFaceColor}
               />
             </div>
+          )}
+            </>
           )}
         </div>
 
@@ -235,35 +425,51 @@ export default function GamePage() {
             players={players}
             scores={scores}
             round={round}
+            maxRounds={maxRounds}
             phase={phase}
             roundHistory={roundHistory}
+            gameMode={gameMode}
+            teamScores={teamScores}
+            team1Name={team1Name}
+            team2Name={team2Name}
+            ruthlessHidden={ruthlessHidden}
           />
-          {phase !== 'LOBBY' && (
-            <div style={{ marginTop: 12 }}>
-              <ChatPanel
-                roomCode={roomCode}
-                messages={chatMessages}
-                myPlayerId={playerId}
-                disabled={phase === 'GAME_END' || paused}
-              />
-            </div>
-          )}
+          <div style={{ marginTop: 12 }}>
+            <ChatPanel
+              roomCode={roomCode}
+              messages={chatMessages}
+              myPlayerId={playerId}
+              mentionableUsers={mentionableUsers}
+              disabled={phase === 'GAME_END' || (paused && !isSpectator)}
+            />
+          </div>
         </div>
       </div>
 
-      <ActivityFeed
-        turnAlert={turnAlert}
-        onDismissTurn={clearTurnAlert}
-      />
+      {/* Reconnecting indicator — shown when the socket drops mid-game */}
+      <AnimatePresence>
+        {!wsConnected && phase !== 'LOBBY' && phase !== 'GAME_END' && (
+          <motion.div
+            style={styles.reconnectToast}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+          >
+            <span style={styles.reconnectDot} /> Reconnecting…
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modals */}
-      {showBidModal && phase === 'BIDDING' && isMyTurn && (
+      {showBidModal && phase === 'BIDDING' && isMyTurn && !isSpectator && (
         <BidModal
           round={round}
           roomCode={roomCode}
           hand={hand}
           players={players}
           myPlayerId={playerId}
+          faceColor={myFaceColor}
+          ruthlessHidden={ruthlessHidden}
           onBid={() => setShowBidModal(false)}
         />
       )}
@@ -337,6 +543,140 @@ const styles: Record<string, React.CSSProperties> = {
   pageIncognito: {
     background: 'linear-gradient(160deg, #0a0a0c 0%, #121218 50%, #0d0d12 100%)',
   },
+  modeBanner: {
+    margin: '8px 16px 0',
+    padding: '10px 14px',
+    borderRadius: 10,
+    background: 'rgba(241, 196, 15, 0.1)',
+    border: '1px solid rgba(241, 196, 15, 0.25)',
+    fontSize: 13,
+    color: '#fff',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  modeBannerLabel: {
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  modeHint: { fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: 500 },
+  clanLobby: {
+    margin: '12px 0',
+    padding: 16,
+    borderRadius: 12,
+    background: 'rgba(0,0,0,0.25)',
+    border: '1px solid rgba(255,255,255,0.1)',
+  },
+  clanTitle: { margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#f1c40f', textAlign: 'center' },
+  clanPickRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 },
+  clanPickBtn: {
+    padding: '12px 10px', borderRadius: 10, border: '2px solid', background: 'rgba(0,0,0,0.2)',
+    color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+  },
+  clanTeam1: { borderColor: 'rgba(52, 152, 219, 0.5)', color: '#3498db' },
+  clanTeam2: { borderColor: 'rgba(231, 76, 60, 0.5)', color: '#e74c3c' },
+  clanPickActive: { background: 'rgba(255,255,255,0.12)' },
+  clanColumns: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+  clanCol: { padding: 10, borderRadius: 10, background: 'rgba(255,255,255,0.04)' },
+  clanColTitle: { fontSize: 12, fontWeight: 800, marginBottom: 8 },
+  clanSlot: { fontSize: 12, padding: '6px 8px', marginBottom: 4, borderRadius: 6, background: 'rgba(0,0,0,0.2)' },
+  clanEmpty: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' },
+  clanNameEdit: {
+    display: 'grid',
+    gap: 8,
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.04)',
+  },
+  clanNameLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'rgba(255,255,255,0.65)',
+  },
+  clanNameInput: {
+    padding: '8px 10px',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(0,0,0,0.25)',
+    color: '#fff',
+    fontSize: 13,
+  },
+  clanNameSave: {
+    padding: '8px 12px',
+    borderRadius: 8,
+    border: 'none',
+    background: '#74c69d',
+    color: '#0d2b1a',
+    fontWeight: 700,
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+  hostPanel: {
+    margin: '12px 0',
+    padding: 14,
+    borderRadius: 12,
+    background: 'rgba(241, 196, 15, 0.08)',
+    border: '1px solid rgba(241, 196, 15, 0.25)',
+  },
+  hostTitle: { margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#f1c40f' },
+  hostRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 8,
+  },
+  hostSelect: {
+    padding: '6px 10px',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(0,0,0,0.25)',
+    color: '#fff',
+    fontSize: 13,
+  },
+  hostNote: { margin: '4px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 },
+  hostError: { margin: '8px 0 0', fontSize: 12, color: '#e74c3c' },
+  readyRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  kickBtn: {
+    padding: '4px 10px',
+    borderRadius: 6,
+    border: '1px solid rgba(231, 76, 60, 0.45)',
+    background: 'rgba(231, 76, 60, 0.15)',
+    color: '#e74c3c',
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  kickConfirm: { display: 'flex', gap: 6 },
+  kickYes: {
+    padding: '4px 8px',
+    borderRadius: 6,
+    border: 'none',
+    background: '#e74c3c',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  kickNo: {
+    padding: '4px 8px',
+    borderRadius: 6,
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    cursor: 'pointer',
+  },
   pauseOverlay: {
     position: 'fixed', inset: 0, zIndex: 250,
     background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
@@ -376,6 +716,174 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer',
     alignSelf: 'center' as const, boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
   },
+  startBtnDisabled: {
+    opacity: 0.45,
+    cursor: 'not-allowed',
+    background: 'rgba(45,106,79,0.5)',
+  },
+  readyBar: {
+    alignSelf: 'center' as const,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    maxWidth: 420,
+  },
+  readyList: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 8,
+    justifyContent: 'center',
+  },
+  readyChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '4px 10px',
+    borderRadius: 16,
+    fontSize: 12,
+    fontWeight: 600,
+    background: 'rgba(255,255,255,0.08)',
+    color: 'rgba(255,255,255,0.65)',
+    border: '1px solid rgba(255,255,255,0.12)',
+  },
+  readyChipOn: {
+    background: 'rgba(46,204,113,0.2)',
+    color: '#2ecc71',
+    borderColor: 'rgba(46,204,113,0.45)',
+  },
+  readyBtn: {
+    padding: '10px 20px',
+    borderRadius: 10,
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(255,255,255,0.1)',
+    color: '#fff',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  readyBtnOn: {
+    background: 'rgba(46,204,113,0.35)',
+    borderColor: '#2ecc71',
+  },
+  spectatorBanner: {
+    textAlign: 'center' as const,
+    padding: '6px 12px',
+    background: 'rgba(52,152,219,0.2)',
+    borderBottom: '1px solid rgba(52,152,219,0.35)',
+    color: '#85c1e9',
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  shareBar: {
+    alignSelf: 'center' as const,
+    width: '100%',
+    maxWidth: 420,
+    background: 'rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: '14px 16px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 10,
+  },
+  shareCodeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  shareLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  shareCode: {
+    color: '#f1c40f',
+    fontSize: 22,
+    fontWeight: 800,
+    letterSpacing: 3,
+    fontFamily: 'monospace',
+  },
+  shareBtn: {
+    padding: '12px 16px',
+    borderRadius: 10,
+    border: 'none',
+    cursor: 'pointer',
+    background: 'linear-gradient(135deg, #2980b9, #1a5276)',
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: 14,
+  },
+  shareMsg: {
+    margin: 0,
+    textAlign: 'center' as const,
+    color: '#74c69d',
+    fontSize: 12,
+    fontWeight: 600,
+    wordBreak: 'break-all' as const,
+  },
+  shareSub: {
+    margin: 0,
+    textAlign: 'center' as const,
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+  },
+  nicknameBar: {
+    alignSelf: 'center' as const,
+    width: '100%',
+    maxWidth: 420,
+    background: 'rgba(0,0,0,0.2)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: '14px 16px',
+    marginBottom: 4,
+  },
+  nicknameLabel: {
+    margin: '0 0 8px',
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontWeight: 600,
+    textAlign: 'center' as const,
+  },
+  nicknameRow: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+  },
+  nicknameInput: {
+    flex: 1,
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#fff',
+    fontSize: 14,
+    outline: 'none',
+  },
+  nicknameBtn: {
+    padding: '10px 14px',
+    borderRadius: 10,
+    border: 'none',
+    background: 'linear-gradient(135deg, #2980b9, #1a5276)',
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    minWidth: 64,
+  },
+  nicknameError: {
+    margin: '8px 0 0',
+    color: '#ff7b7b',
+    fontSize: 12,
+    textAlign: 'center' as const,
+  },
+  nicknameSub: {
+    margin: '8px 0 0',
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    textAlign: 'center' as const,
+  },
   waitHint: {
     color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center' as const,
     padding: '12px 0',
@@ -389,5 +897,15 @@ const styles: Record<string, React.CSSProperties> = {
   },
   closeToast: {
     background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16,
+  },
+  reconnectToast: {
+    position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+    background: 'rgba(30,30,30,0.95)', color: '#f1c40f', padding: '10px 18px', borderRadius: 12,
+    fontSize: 13, fontWeight: 700, display: 'flex', gap: 10, alignItems: 'center',
+    zIndex: 300, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', border: '1px solid rgba(241,196,15,0.4)',
+  },
+  reconnectDot: {
+    width: 8, height: 8, borderRadius: '50%', background: '#f1c40f',
+    boxShadow: '0 0 8px #f1c40f',
   },
 };

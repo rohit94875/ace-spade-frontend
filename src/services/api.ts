@@ -1,6 +1,7 @@
 import axios from 'axios';
-import type { DisconnectPolicy, MaxRounds, SessionResumeResponse } from '../types/game';
-import { loadAuth } from './authStorage';
+import type { DisconnectPolicy, MaxRounds, PublicRoomDto, RoomStateDto, SessionResumeResponse } from '../types/game';
+import type { GameMode } from '../constants/gameModes';
+import { loadAuth, saveAuth } from './authStorage';
 import { refresh as refreshAuth } from './authApi';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -14,6 +15,12 @@ api.interceptors.request.use(async (config) => {
     try {
       const res = await refreshAuth(stored.refreshToken);
       token = res.accessToken;
+      saveAuth({
+        accessToken: res.accessToken,
+        refreshToken: res.refreshToken,
+        expiresAt: Date.now() + res.expiresInMs,
+        user: res.user,
+      });
     } catch {
       return config;
     }
@@ -43,16 +50,58 @@ export const createRoom = (
   disconnectPolicy: DisconnectPolicy,
   ranked = false,
   maxRounds: MaxRounds = 13,
+  publicRoom = false,
+  gameMode: GameMode = 'CLASSIC',
 ): Promise<CreateRoomResponse> =>
-  api.post('/rooms', { username, playWithBot, disconnectPolicy, ranked, maxRounds }).then((r) => r.data);
+  api.post('/rooms', { username, playWithBot, disconnectPolicy, ranked, maxRounds, publicRoom, gameMode }).then((r) => r.data);
 
 export const joinRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
   api.post(`/rooms/${code}/join`, { username }).then((r) => r.data);
 
+export const rejoinRoom = (code: string): Promise<JoinRoomResponse> =>
+  api.post(`/rooms/${code}/rejoin`, {}).then((r) => r.data);
+
+export const spectateRoom = (code: string, username: string): Promise<JoinRoomResponse> =>
+  api.post(`/rooms/${code}/spectate`, { username }).then((r) => r.data);
+
+export const listPublicRooms = (): Promise<PublicRoomDto[]> =>
+  api.get('/rooms/public').then((r) => r.data);
+
+export const updateNickname = (
+  roomCode: string,
+  sessionToken: string,
+  nickname: string,
+): Promise<{ nickname: string }> =>
+  api.patch(`/rooms/${roomCode}/nickname`, { nickname }, {
+    headers: { 'X-Session-Token': sessionToken },
+  }).then((r) => r.data);
+
 export const getRoom = (code: string) =>
   api.get(`/rooms/${code}`).then((r) => r.data);
+
+export const updateRoomSettings = (
+  roomCode: string,
+  sessionToken: string,
+  patch: { maxRounds?: number; team1Name?: string; team2Name?: string },
+): Promise<RoomStateDto> =>
+  api.patch(`/rooms/${roomCode}/settings`, patch, {
+    headers: { 'X-Session-Token': sessionToken },
+  }).then((r) => r.data);
 
 export const resumeSession = (sessionToken: string): Promise<SessionResumeResponse> =>
   api.get('/sessions/me', {
     headers: { 'X-Session-Token': sessionToken },
   }).then((r) => r.data);
+
+export interface ActiveGameDto {
+  roomCode: string;
+  phase: string;
+  hasSeat: boolean;
+}
+
+/** Returns active seated game for the logged-in user, or null if none. */
+export const getActiveGame = (): Promise<ActiveGameDto | null> =>
+  api.get('/sessions/active').then((r) => r.data ?? null).catch((e) => {
+    if (e?.response?.status === 204) return null;
+    throw e;
+  });

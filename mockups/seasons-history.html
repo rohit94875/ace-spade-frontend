@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Previous Seasons — Ace Spade Mockup</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border-soft);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .tab.active {
+      background: rgba(116, 198, 157, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .season-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      background: rgba(255,255,255,0.04);
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .season-row:hover { border-color: var(--accent); }
+    .season-row.current { border-color: var(--gold); background: rgba(241,196,15,0.06); }
+
+    .season-name { font-weight: 700; font-size: 15px; }
+    .season-dates { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .season-status { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+
+    table.data { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    table.data th { text-align: left; font-size: 11px; color: var(--text-dim); padding: 8px 4px; text-transform: uppercase; }
+    table.data td { font-size: 13px; padding: 10px 4px; border-top: 1px solid var(--border-soft); }
+
+    .empty-note {
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(52, 152, 219, 0.08);
+      border: 1px solid rgba(52, 152, 219, 0.2);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .award-winner-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 1px solid var(--border-soft);
+      font-size: 13px;
+    }
+    .award-winner-row .winner-name { color: var(--accent); font-weight: 600; flex: 1; }
+    .award-winner-row .winner-stat { font-size: 11px; color: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← All mockups</a>
+    <div class="page-header">
+      <h1>Previous seasons</h1>
+      <p>Tier cards (Gold Card, Silver Card, …) + award cards. Full collection on <a href="profile-rewards.html">profile</a>.</p>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:16px;">Season history</h2>
+
+      <div class="season-row current">
+        <div>
+          <div class="season-name">Season 2 — September 2026</div>
+          <div class="season-dates">1 Sep – 30 Sep 2026 IST · Grace until 1 Oct 12:00 AM</div>
+        </div>
+        <span class="season-status" style="color:var(--gold);">Active</span>
+      </div>
+
+      <div class="season-row">
+        <div>
+          <div class="season-name">Season 1</div>
+          <div class="season-dates">Pre-season · Completed Aug 2026</div>
+        </div>
+        <span class="season-status" style="color:var(--text-dim);">Completed</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="badge badge-gold">Current season</span>
+      <h2 style="font-size:20px;font-weight:800;margin:12px 0 4px;">Season 2 — September 2026</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">1 Sep 2026, 12:00 AM IST – 30 Sep 2026, 11:59 PM IST</p>
+
+      <div class="tabs">
+        <span class="tab active">Classic</span>
+        <span class="tab" style="opacity:0.5;" title="Phase 2">Ruthless</span>
+        <span class="tab" style="opacity:0.5;" title="History only — no MMR board">Clan Battle</span>
+      </div>
+
+      <p class="section-title" style="margin-top:0;">Live leaderboard (top 3)</p>
+      <table class="data">
+        <thead><tr><th>#</th><th>Player</th><th>Tier</th><th>MMR</th><th>Games</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td style="color:var(--accent);font-weight:600;">CardShark99</td><td class="tier-gold">Gold 1</td><td>1642</td><td>28</td></tr>
+          <tr><td>2</td><td style="color:var(--accent);">AceHunter</td><td class="tier-gold">Gold 2</td><td>1598</td><td>31</td></tr>
+          <tr><td>3</td><td>TrickMaster</td><td class="tier-silver">Silver 1</td><td>1512</td><td>19</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <span class="badge">Completed preview</span>
+      <h2 style="font-size:20px;font-weight:800;margin:12px 0 4px;">Season 2 — end of month</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">How awards look when the season closes</p>
+
+      <p class="section-title" style="margin-top:0;">Tier cards (everyone who finished placement)</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">One card per player based on final MMR tier — e.g. end at Gold 2 → <strong>Gold Card</strong></p>
+      <div class="symbol-grid symbol-grid-lg">
+        <div class="symbol-item">
+          <div class="playing-card tier-sand"><div class="card-suit">♣</div><div class="card-rank">Sand Card</div></div>
+          <div class="symbol-caption">Sand</div>
+        </div>
+        <div class="symbol-item">
+          <div class="playing-card tier-bronze"><div class="card-suit">♦</div><div class="card-rank">Bronze Card</div></div>
+          <div class="symbol-caption">Bronze</div>
+        </div>
+        <div class="symbol-item">
+          <div class="playing-card tier-silver"><div class="card-suit">♠</div><div class="card-rank">Silver Card</div></div>
+          <div class="symbol-caption">Silver</div>
+        </div>
+        <div class="symbol-item">
+          <div class="playing-card tier-gold"><div class="card-suit">♥</div><div class="card-rank">Gold Card</div></div>
+          <div class="symbol-caption">Gold</div>
+        </div>
+        <div class="symbol-item">
+          <div class="playing-card tier-platinum"><div class="card-suit">♣</div><div class="card-rank">Platinum Card</div></div>
+          <div class="symbol-caption">Platinum</div>
+        </div>
+        <div class="symbol-item">
+          <div class="playing-card tier-diamond"><div class="card-suit">♦</div><div class="card-rank">Diamond Card</div></div>
+          <div class="symbol-caption">Diamond</div>
+        </div>
+        <div class="symbol-item">
+          <div class="playing-card tier-ace"><div class="card-suit">♠</div><div class="card-rank">Ace Card</div><div class="card-sub">ACE KING</div></div>
+          <div class="symbol-caption">Ace / Master</div>
+        </div>
+      </div>
+
+      <p class="section-title">Season awards — unique symbols (not rank cards)</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+        <strong>Rank</strong> = playing card only (Gold Card, Silver Card, …).
+        <strong>Awards</strong> = one distinct badge per category. One winner each, shown on profile under Rewards.
+      </p>
+
+      <div class="award-reason-list">
+        <div class="award-reason-row">
+          <div class="award-badge award-badge--top-mmr"><svg viewBox="0 0 64 64" fill="none"><path d="M8 44 L14 22 L24 32 L32 14 L40 32 L50 22 L56 44 Z" fill="#f1c40f" stroke="#b8860b" stroke-width="2"/><rect x="10" y="44" width="44" height="8" rx="2" fill="#d4a017"/></svg></div>
+          <div><h4>Top MMR</h4><p>Strongest player at season end — highest MMR after placement.</p><div class="who-wins">Winner: highest final MMR</div></div>
+        </div>
+        <div class="award-reason-row">
+          <div class="award-badge award-badge--matches"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="26" stroke="#74c69d" stroke-width="3" fill="rgba(116,198,157,0.15)"/><circle cx="32" cy="32" r="10" fill="#74c69d"/></svg></div>
+          <div><h4>Most Matches</h4><p>Most ranked games played — rewards showing up all month.</p><div class="who-wins">Winner: most games played</div></div>
+        </div>
+        <div class="award-reason-row">
+          <div class="award-badge award-badge--wins"><svg viewBox="0 0 64 64" fill="none"><path d="M20 18 H44 V28 C44 36 38 42 32 42 C26 42 20 36 20 28 Z" fill="#f1c40f" stroke="#b8860b" stroke-width="2"/><rect x="22" y="48" width="20" height="5" rx="1" fill="#d4a017"/></svg></div>
+          <div><h4>Most Wins</h4><p>Most 1st-place finishes in ranked matches.</p><div class="who-wins">Winner: highest win count</div></div>
+        </div>
+        <div class="award-reason-row">
+          <div class="award-badge award-badge--losses"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="30" r="20" fill="#4a4a4a" stroke="#888" stroke-width="2"/><path d="M26 22 L38 38 M38 22 L26 38" stroke="#aaa" stroke-width="2"/></svg></div>
+          <div><h4>Most Losses</h4><p>Fun award — lost the most but kept playing.</p><div class="who-wins">Winner: highest loss count</div></div>
+        </div>
+        <div class="award-reason-row">
+          <div class="award-badge award-badge--win-streak"><svg viewBox="0 0 64 64" fill="none"><path d="M32 54 C20 44 14 34 18 24 C22 16 28 20 32 12 C36 20 42 16 46 24 C50 34 44 44 32 54 Z" fill="#e67e22"/><path d="M32 48 C26 40 24 32 28 26 C32 28 36 26 40 32 C38 40 32 48 32 48 Z" fill="#f39c12"/></svg></div>
+          <div><h4>Win Streak</h4><p>Longest run of consecutive ranked wins.</p><div class="who-wins">Winner: longest win streak</div></div>
+        </div>
+        <div class="award-reason-row">
+          <div class="award-badge award-badge--loss-streak"><svg viewBox="0 0 64 64" fill="none"><path d="M32 8 L32 56 M14 32 L50 32 M18 18 L46 46 M46 18 L18 46" stroke="#85c1e9" stroke-width="2.5" stroke-linecap="round"/><circle cx="32" cy="32" r="6" fill="#aed6f1"/></svg></div>
+          <div><h4>Loss Streak</h4><p>Longest run of consecutive ranked losses.</p><div class="who-wins">Winner: longest loss streak</div></div>
+        </div>
+        <div class="award-reason-row">
+          <div class="award-badge award-badge--bid-master"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="26" stroke="#a29bfe" stroke-width="2"/><circle cx="32" cy="32" r="6" fill="#6c5ce7"/></svg></div>
+          <div><h4>Bid Master</h4><p>Best bid accuracy — most rounds where bid matched tricks won.</p><div class="who-wins">Winner: highest bid-hit %</div></div>
+        </div>
+        <div class="award-reason-row">
+          <div class="award-badge award-badge--finisher"><svg viewBox="0 0 64 64" fill="none"><path d="M32 6 L52 16 V32 C52 44 42 52 32 58 C22 52 12 44 12 32 V16 Z" fill="#2ecc71" stroke="#27ae60" stroke-width="2"/><path d="M22 32 L28 38 L42 24" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/></svg></div>
+          <div><h4>Finisher</h4><p>Most ranked games completed without quitting mid-match.</p><div class="who-wins">Winner: most completed games (no forfeit)</div></div>
+        </div>
+      </div>
+
+      <p class="section-title">Winners (Season 2 example)</p>
+      <div class="award-winner-row"><div class="award-badge award-badge--top-mmr" style="width:40px;height:40px;"><svg viewBox="0 0 64 64" fill="none"><path d="M8 44 L14 22 L24 32 L32 14 L40 32 L50 22 L56 44 Z" fill="#f1c40f"/></svg></div><span class="winner-name">CardShark99</span><span class="winner-stat">Top MMR · 1724</span></div>
+      <div class="award-winner-row"><div class="award-badge award-badge--win-streak" style="width:40px;height:40px;"><svg viewBox="0 0 64 64" fill="none"><path d="M32 54 C20 44 14 34 18 24 C32 12 46 24 50 34 C44 44 32 54 Z" fill="#e67e22"/></svg></div><span class="winner-name">AceHunter</span><span class="winner-stat">Win Streak · 9</span></div>
+      <div class="award-winner-row"><div class="award-badge award-badge--finisher" style="width:40px;height:40px;"><svg viewBox="0 0 64 64" fill="none"><path d="M32 6 L52 16 V32 C52 44 32 58 12 44 12 32 V16 Z" fill="#2ecc71"/></svg></div><span class="winner-name">TrickMaster</span><span class="winner-stat">Finisher · 29 games</span></div>
+    </div>
+
+    <div class="card">
+      <span class="badge">Season 1</span>
+      <h2 style="font-size:18px;font-weight:800;margin:12px 0 8px;">Season 1</h2>
+      <div class="empty-note">
+        No cards or awards tracked for Season 1. Your collection starts from Season 2.
+        <a href="profile-rewards.html">See profile layout →</a>
+      </div>
+    </div>
+
+    <div class="mockup-note">
+      <strong>Rank</strong> = playing cards only. <strong>Awards</strong> = unique badge symbols (see <code>_award-icons-reference.html</code>).
+      Profile <strong>Rewards</strong> tab shows both types.
+    </div>
+  </div>
+</body>
+</html>

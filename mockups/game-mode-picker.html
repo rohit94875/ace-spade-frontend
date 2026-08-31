@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Game Mode Picker — Ace Spade Mockup</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .mode-card {
+      position: relative;
+      padding: 16px;
+      border-radius: 14px;
+      border: 2px solid var(--border-soft);
+      background: rgba(255,255,255,0.04);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .mode-card:hover {
+      border-color: rgba(116, 198, 157, 0.4);
+      background: rgba(116, 198, 157, 0.05);
+    }
+
+    .mode-card.selected {
+      border-color: var(--accent);
+      background: rgba(116, 198, 157, 0.1);
+    }
+
+    .mode-card.selected::after {
+      content: '✓';
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0d2b1a;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mode-icon { font-size: 32px; margin-bottom: 8px; }
+    .mode-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .mode-desc { font-size: 11px; color: var(--text-muted); line-height: 1.45; }
+
+    .mode-tag {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.08);
+      color: var(--text-dim);
+    }
+
+    .mode-tag.ranked { background: rgba(241,196,15,0.15); color: var(--gold); }
+
+    .create-shell {
+      max-width: 480px;
+      margin: 0 auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .input-row {
+      margin-bottom: 14px;
+    }
+
+    .input-row label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .input-row input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .phase-badge {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(52, 152, 219, 0.15);
+      color: var(--blue);
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← All mockups</a>
+    <div class="page-header">
+      <h1>Game mode picker</h1>
+      <p>Shown when creating a room. Classic &amp; Ruthless have MMR leaderboards. Clan Battle uses match history only.</p>
+    </div>
+
+    <div class="card">
+      <div class="create-shell">
+        <h2 style="font-size:18px;font-weight:800;margin-bottom:16px;text-align:center;">Create room</h2>
+
+        <div class="input-row">
+          <label>Nickname</label>
+          <input type="text" value="CardShark99" readonly />
+        </div>
+
+        <div class="input-row">
+          <label>Game mode <span class="phase-badge">Phase 2</span></label>
+          <div class="mode-grid">
+            <div class="mode-card selected" onclick="selectMode(this)">
+              <div class="mode-icon">♠</div>
+              <div class="mode-name">Classic</div>
+              <div class="mode-desc">Original rules. Exact bid scores, miss = 0. Bids visible to all.</div>
+              <span class="mode-tag ranked">Separate ranked board</span>
+            </div>
+
+            <div class="mode-card" onclick="selectMode(this)">
+              <div class="mode-icon">🎭</div>
+              <div class="mode-name">Ruthless &amp; Hidden</div>
+              <div class="mode-desc">Bids hidden until round ends. Miss your bid = exponential negative score.</div>
+              <span class="mode-tag ranked">Separate ranked board</span>
+            </div>
+
+            <div class="mode-card" onclick="selectMode(this)">
+              <div class="mode-icon">⚔️</div>
+              <div class="mode-name">Clan Battle</div>
+              <div class="mode-desc">2 teams, 2-3 players each (4-6 total). Team scores when sum of bids equals sum of tricks won.</div>
+              <span class="mode-tag ranked">Separate ranked board</span>
+            </div>
+          </div>
+        </div>
+
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:14px;cursor:pointer;">
+          <input type="checkbox" checked /> Ranked match (login required · affects MMR)
+        </label>
+
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:20px;cursor:pointer;">
+          <input type="checkbox" checked /> List publicly
+        </label>
+
+        <button class="btn btn-primary" style="width:100%;">Create room</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">Mode comparison</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="color:var(--text-dim);text-align:left;">
+            <th style="padding:8px 4px;">Feature</th>
+            <th style="padding:8px 4px;">Classic</th>
+            <th style="padding:8px 4px;">Ruthless</th>
+            <th style="padding:8px 4px;">Clan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top:1px solid var(--border-soft);">
+            <td style="padding:8px 4px;color:var(--text-muted);">Bid visibility</td>
+            <td style="padding:8px 4px;">Open</td>
+            <td style="padding:8px 4px;">Hidden until reveal</td>
+            <td style="padding:8px 4px;">Open</td>
+          </tr>
+          <tr style="border-top:1px solid var(--border-soft);">
+            <td style="padding:8px 4px;color:var(--text-muted);">Miss penalty</td>
+            <td style="padding:8px 4px;">0 pts</td>
+            <td style="padding:8px 4px;">Exponential negative</td>
+            <td style="padding:8px 4px;">Team gets 0</td>
+          </tr>
+          <tr style="border-top:1px solid var(--border-soft);">
+            <td style="padding:8px 4px;color:var(--text-muted);">Players</td>
+            <td style="padding:8px 4px;">2-8</td>
+            <td style="padding:8px 4px;">2-8</td>
+            <td style="padding:8px 4px;">2-6 (2v2, 2v3, 3v3)</td>
+          </tr>
+          <tr style="border-top:1px solid var(--border-soft);">
+            <td style="padding:8px 4px;color:var(--text-muted);">Leaderboard</td>
+            <td style="padding:8px 4px;">MMR ranked board</td>
+            <td style="padding:8px 4px;">MMR ranked board</td>
+            <td style="padding:8px 4px;">Match history only</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mockup-note">
+      Default mode is <strong>CLASSIC</strong>. Leaderboard: Classic + Ruthless = MMR tabs;
+      Clan Battle tab = <a href="leaderboard-modes.html">history only</a> (see mockup).
+    </div>
+  </div>
+
+  <script>
+    function selectMode(el) {
+      document.querySelectorAll('.mode-card').forEach(function (c) { c.classList.remove('selected'); });
+      el.classList.add('selected');
+    }
+  </script>
+</body>
+</html>

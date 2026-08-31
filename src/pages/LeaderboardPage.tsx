@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getLeaderboard } from '../services/authApi';
+import { getCurrentSeason } from '../services/seasonApi';
 import type { LeaderboardEntry } from '../types/auth';
+import { TIER_COLORS } from '../constants/tiers';
+import TierBadge from '../components/TierBadge';
+import SeasonCountdownBanner from '../components/SeasonCountdownBanner';
 
-const TIER_COLORS: Record<string, string> = {
-  Bronze: '#cd7f32',
-  Silver: '#c0c0c0',
-  Gold: '#f1c40f',
-  Platinum: '#81ecec',
-  Diamond: '#a29bfe',
-};
+export { TIER_COLORS };
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seasonName, setSeasonName] = useState('Current season');
 
   useEffect(() => {
+    getCurrentSeason()
+      .then((s) => setSeasonName(s.name))
+      .catch(() => undefined);
     getLeaderboard(50)
       .then(setEntries)
       .catch(() => setEntries([]))
@@ -26,7 +28,8 @@ export default function LeaderboardPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <h1 style={styles.title}>Global Ranked Leaderboard</h1>
-        <p style={styles.sub}>Season 1 · One global pool · Tier shown after 5 placement games</p>
+        <SeasonCountdownBanner />
+        <p style={styles.sub}>{seasonName} · Classic ranked · Tier after placement</p>
 
         {loading ? (
           <p style={styles.muted}>Loading…</p>
@@ -39,7 +42,6 @@ export default function LeaderboardPage() {
                 <th style={styles.th}>#</th>
                 <th style={styles.th}>Player</th>
                 <th style={styles.th}>Tier</th>
-                <th style={styles.th}>MMR</th>
                 <th style={styles.th}>Games</th>
               </tr>
             </thead>
@@ -47,9 +49,13 @@ export default function LeaderboardPage() {
               {entries.map((e) => (
                 <tr key={e.userId}>
                   <td style={styles.td}>{e.rank}</td>
-                  <td style={styles.td}>{e.username}</td>
+                  <td style={styles.td}>
+                    <Link to={`/profile/${e.userId}`} style={styles.playerLink}>
+                      <TierBadge tier={e.tier} size="sm" />
+                      {' '}{e.username}
+                    </Link>
+                  </td>
                   <td style={{ ...styles.td, color: TIER_COLORS[e.tier] ?? '#fff', fontWeight: 600 }}>{e.tier}</td>
-                  <td style={styles.td}>{e.mmr.toFixed(1)}</td>
                   <td style={styles.td}>{e.gamesPlayed}</td>
                 </tr>
               ))}
@@ -72,5 +78,6 @@ const styles: Record<string, React.CSSProperties> = {
   table: { width: '100%', borderCollapse: 'collapse' as const, marginBottom: 20 },
   th: { textAlign: 'left' as const, fontSize: 12, color: 'rgba(255,255,255,0.45)', paddingBottom: 8 },
   td: { fontSize: 14, color: 'rgba(255,255,255,0.85)', padding: '8px 4px', borderTop: '1px solid rgba(255,255,255,0.06)' },
+  playerLink: { color: '#74c69d', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 },
   back: { color: '#74c69d', fontSize: 14, textDecoration: 'none' },
 };
