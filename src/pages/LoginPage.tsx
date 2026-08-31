@@ -2,15 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
-import { useGameStore } from '../store/gameStore';
-import { restoreGameSession } from '../services/sessionRestore';
-import { RANKED_MIN_ROUNDS, RANKED_MAX_ROUNDS } from '../constants/gameLength';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
-  const getAccessToken = useAuthStore((s) => s.getAccessToken);
-  const applyResume = useGameStore((s) => s.applyResume);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,12 +17,6 @@ export default function LoginPage() {
     setError('');
     try {
       await login(email.trim(), password);
-      const restored = await restoreGameSession(getAccessToken);
-      if (restored.ok && restored.resume && restored.stored) {
-        applyResume(restored.resume, restored.stored);
-        navigate('/game', { replace: true });
-        return;
-      }
       navigate('/');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -41,14 +30,13 @@ export default function LoginPage() {
     <div style={styles.page}>
       <motion.form style={styles.card} onSubmit={handleSubmit} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 style={styles.title}>Sign in</h1>
-        <p style={styles.sub}>
-          An account is required to play. Ranked games run {RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds; casual games are up to 5 rounds.
-        </p>
+        <p style={styles.sub}>Email/password only — required for ranked play</p>
         <input style={styles.input} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input style={styles.input} type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.btn} type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</button>
         <p style={styles.linkRow}>No account? <Link to="/register" style={styles.link}>Register</Link></p>
+        <Link to="/leaderboard" style={styles.back}>View leaderboard</Link>
       </motion.form>
     </div>
   );
@@ -64,4 +52,5 @@ const styles: Record<string, React.CSSProperties> = {
   error: { color: '#e74c3c', fontSize: 13, margin: 0 },
   linkRow: { color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center' as const },
   link: { color: '#74c69d' },
+  back: { color: 'rgba(255,255,255,0.45)', fontSize: 12, textAlign: 'center' as const, textDecoration: 'none' },
 };

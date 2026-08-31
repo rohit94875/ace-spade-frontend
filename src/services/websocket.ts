@@ -155,6 +155,20 @@ export function sendVoteBot(roomCode: string, targetPlayerId: string) {
   });
 }
 
+export function sendKick(roomCode: string, targetPlayerId: string) {
+  stompClient?.publish({
+    destination: `/app/game/${roomCode}/kick`,
+    body: JSON.stringify({ targetPlayerId }),
+  });
+}
+
+export function sendTeam(roomCode: string, team: 1 | 2) {
+  stompClient?.publish({
+    destination: `/app/game/${roomCode}/team`,
+    body: JSON.stringify({ team }),
+  });
+}
+
 export function sendBid(roomCode: string, amount: number) {
   stompClient?.publish({
     destination: `/app/game/${roomCode}/bid`,

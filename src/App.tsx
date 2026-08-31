@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import RankCollectionPage from './pages/RankCollectionPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import SeasonsPage from './pages/SeasonsPage';
 import { useGameStore } from './store/gameStore';
 import { useAuthStore } from './store/authStore';
 import { restoreGameSession } from './services/sessionRestore';
@@ -71,7 +72,7 @@ function SessionBootstrap({ children }: { children: React.ReactNode }) {
         }
       })
       .finally(() => setReady(true));
-  }, [authReady, roomCode, applyResume, getAccessToken, navigate, location.pathname]);
+  }, [authReady, roomCode, applyResume, getAccessToken, navigate, location.pathname, isLoggedIn]);
 
   if (!authReady || !ready) return <LoadingScreen />;
   return <>{children}</>;
@@ -86,6 +87,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/seasons" element={<SeasonsPage />} />
+        <Route path="/seasons/:id" element={<SeasonsPage />} />
         <Route
           path="/profile/:userId/ranks"
           element={(

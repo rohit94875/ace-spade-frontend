@@ -13,6 +13,9 @@ export interface RoundHistoryEntry {
   bids: Record<string, number>;
   tricksWon: Record<string, number>;
   roundScores: Record<string, number>;
+  teamRoundScores?: Record<string, number>;
+  teamBids?: Record<string, number>;
+  teamTricksWon?: Record<string, number>;
 }
 
 interface LastTrick {
@@ -27,6 +30,10 @@ interface RoundSummary {
   cumulativeScores: Record<string, number>;
   bids: Record<string, number>;
   tricksWon: Record<string, number>;
+  teamRoundScores?: Record<string, number>;
+  teamCumulativeScores?: Record<string, number>;
+  teamBids?: Record<string, number>;
+  teamTricksWon?: Record<string, number>;
   gameOver: boolean;
   winnerUsername?: string;
   winnerScore?: number;
@@ -67,6 +74,11 @@ interface GameStore {
   isSpectator: boolean;
   spectators: SpectatorDto[];
   botVotes: Record<string, string[]>;
+  gameMode: import('../constants/gameModes').GameMode;
+  teamScores: Record<string, number>;
+  team1Name: string;
+  team2Name: string;
+  kickedFromLobby: boolean;
 
   setSession: (data: {
     playerId: string;
@@ -81,6 +93,7 @@ interface GameStore {
   }) => void;
   applyResume: (res: SessionResumeResponse, stored: StoredSession) => void;
   applySnapshot: (res: SessionResumeResponse) => void;
+  syncRoomFromDto: (room: RoomStateDto) => void;
   setWsConnected: (v: boolean) => void;
   handleGameEvent: (event: GameEvent) => void;
   setHand: (hand: Card[]) => void;
@@ -123,6 +136,11 @@ const initialState = {
   isSpectator: false,
   spectators: [] as SpectatorDto[],
   botVotes: {} as Record<string, string[]>,
+  gameMode: 'CLASSIC' as import('../constants/gameModes').GameMode,
+  teamScores: {} as Record<string, number>,
+  team1Name: 'Blue Clan',
+  team2Name: 'Red Clan',
+  kickedFromLobby: false,
 };
 
 function applyRoomState(
@@ -144,6 +162,10 @@ function applyRoomState(
     chatMessages: room.chatMessages ?? [],
     spectators: room.spectators ?? [],
     botVotes: room.botVotes ?? {},
+    gameMode: (room.gameMode as import('../constants/gameModes').GameMode) ?? 'CLASSIC',
+    teamScores: room.teamScores ?? {},
+    team1Name: room.team1Name ?? 'Blue Clan',
+    team2Name: room.team2Name ?? 'Red Clan',
     ...extra,
   };
 }
@@ -200,6 +222,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ...applyRoomState(res.room),
     });
   },
+
+  syncRoomFromDto: (room) => set(applyRoomState(room)),
 
   setWsConnected: (v) => set({ wsConnected: v }),
 
@@ -321,6 +345,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
           bids: r.bids,
           tricksWon: r.tricksWon,
           roundScores: r.roundScores,
+          teamRoundScores: r.teamRoundScores,
+          teamBids: r.teamBids,
+          teamTricksWon: r.teamTricksWon,
         };
         set({
           roundSummary: {
@@ -329,6 +356,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
             cumulativeScores: r.cumulativeScores,
             bids: r.bids,
             tricksWon: r.tricksWon,
+            teamRoundScores: r.teamRoundScores,
+            teamCumulativeScores: r.teamCumulativeScores,
+            teamBids: r.teamBids,
+            teamTricksWon: r.teamTricksWon,
             gameOver: r.gameOver,
             winnerUsername: r.winnerUsername,
             winnerScore: r.winnerScore,
@@ -336,7 +367,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
             forfeitedUsername: r.forfeitedUsername,
             ratingUpdates: r.ratingUpdates,
           },
-          scores: r.cumulativeScores,
+          scores: r.teamCumulativeScores ? s.scores : r.cumulativeScores,
+          teamScores: r.teamCumulativeScores ?? s.teamScores,
           phase: r.gameOver ? 'GAME_END' : 'ROUND_END',
           roundHistory: [...s.roundHistory, historyEntry],
           paused: false,
@@ -356,6 +388,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
           players: (payload['players'] as PlayerDto[]) ?? [],
         });
         break;
+
+      case 'PLAYER_KICKED': {
+        const kickedId = payload['playerId'] as string;
+        if (kickedId === s.playerId) {
+          clearSession();
+          set({ ...initialState, kickedFromLobby: true });
+          break;
+        }
+        set({
+          players: s.players.filter((p) => p.id !== kickedId),
+        });
+        break;
+      }
 
       case 'BOT_TAKEOVER':
         set({

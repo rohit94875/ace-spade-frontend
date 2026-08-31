@@ -2,21 +2,21 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
-import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart, sendReady, sendVoteBot } from '../services/websocket';
-import { getRoom, updateNickname } from '../services/api';
+import { connect, disconnect, scheduleDisconnect, sendLeave, sendPause, sendResume, sendStart, sendReady, sendVoteBot, sendTeam, sendKick } from '../services/websocket';
+import { getRoom, updateNickname, updateRoomSettings } from '../services/api';
 import { saveNickname } from '../services/nicknameStorage';
 import { loadSession, saveSession } from '../services/sessionStorage';
 import type { RoomStateDto } from '../types/game';
-import { normalizeMaxRounds } from '../constants/gameLength';
-import PlayerHand from '../components/PlayerHand';
 import TrickArea from '../components/TrickArea';
 import OpponentHands from '../components/OpponentHands';
+import PlayerHand from '../components/PlayerHand';
 import ScorePanel from '../components/ScorePanel';
 import BidModal from '../components/BidModal';
 import RoundSummary from '../components/RoundSummary';
 import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
 import GameHeader from '../components/GameHeader';
+import LobbyPanel from '../components/LobbyPanel';
 import TierBadge from '../components/TierBadge';
 import { tierCardFaceColor } from '../constants/tiers';
 import { useAuthStore } from '../store/authStore';
@@ -31,16 +31,24 @@ export default function GamePage() {
     roundHistory, lastTrick, roundSummary, errorMessage,
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
     presence, graceSeconds, chatMessages,
-    isSpectator, spectators, botVotes,
+    isSpectator, spectators, botVotes, gameMode, teamScores, team1Name, team2Name,
+    kickedFromLobby, ranked,
     handleGameEvent, setHand, dismissRoundSummary, clearError, reset,
-    applySnapshot,
+    applySnapshot, syncRoomFromDto,
   } = useGameStore();
+
+  const ruthlessHidden = gameMode === 'RUTHLESS_HIDDEN';
+  const isClanBattle = gameMode === 'CLAN_BATTLE';
 
   const [showBidModal, setShowBidModal] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(username ?? '');
   const [nicknameError, setNicknameError] = useState('');
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
+  const [hostSettingsError, setHostSettingsError] = useState('');
+  const [kickTarget, setKickTarget] = useState<{ id: string; username: string } | null>(null);
+  const [team1Draft, setTeam1Draft] = useState(team1Name);
+  const [team2Draft, setTeam2Draft] = useState(team2Name);
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
   const authUser = useAuthStore((s) => s.user);
 
@@ -71,56 +79,32 @@ export default function GamePage() {
     }
   }, [phase, isMyTurn, paused]);
 
-  // Load room state (players, bot, lobby phase)
+  useEffect(() => {
+    setTeam1Draft(team1Name);
+    setTeam2Draft(team2Name);
+  }, [team1Name, team2Name]);
+
+  useEffect(() => {
+    if (!kickedFromLobby) return;
+    navigate('/', { replace: true, state: { message: 'You were removed from the lobby by the host.' } });
+    useGameStore.setState({ kickedFromLobby: false });
+  }, [kickedFromLobby, navigate]);
+
+  // Load room state (players, mode, lobby phase)
   useEffect(() => {
     if (!roomCode) return;
     getRoom(roomCode)
-      .then((room: RoomStateDto) => {
-        useGameStore.setState({
-          phase: room.phase,
-          players: room.players,
-          scores: room.scores,
-          currentTurnPlayerId: room.currentTurnPlayerId,
-          hostPlayerId: room.hostPlayerId,
-          round: room.round,
-          maxRounds: normalizeMaxRounds(room.maxRounds),
-          playWithBot: room.playWithBot ?? false,
-          paused: room.paused ?? false,
-          presence: room.presence ?? {},
-          chatMessages: room.chatMessages ?? [],
-          spectators: room.spectators ?? [],
-          botVotes: room.botVotes ?? {},
-        });
-      })
+      .then((room: RoomStateDto) => syncRoomFromDto(room))
       .catch(() => {});
-  }, [roomCode]);
+  }, [roomCode, syncRoomFromDto]);
 
-  // Mobile-friendly reconnect: when the tab is refocused or the network returns,
-  // re-sync room state so the player never has to manually refresh. The STOMP client
-  // auto-reconnects and the server re-sends a full snapshot on reconnect; this covers
-  // the case where the socket stayed open but events were missed while backgrounded.
+  // Mobile-friendly reconnect
   useEffect(() => {
     if (!roomCode) return;
     const resync = () => {
       if (document.visibilityState !== 'visible') return;
       getRoom(roomCode)
-        .then((room: RoomStateDto) => {
-          useGameStore.setState({
-            phase: room.phase,
-            players: room.players,
-            scores: room.scores,
-            currentTurnPlayerId: room.currentTurnPlayerId,
-            hostPlayerId: room.hostPlayerId,
-            round: room.round,
-            maxRounds: normalizeMaxRounds(room.maxRounds),
-            playWithBot: room.playWithBot ?? false,
-            paused: room.paused ?? false,
-            presence: room.presence ?? {},
-            chatMessages: room.chatMessages ?? [],
-            spectators: room.spectators ?? [],
-            botVotes: room.botVotes ?? {},
-          });
-        })
+        .then((room: RoomStateDto) => syncRoomFromDto(room))
         .catch(() => {});
     };
     window.addEventListener('visibilitychange', resync);
@@ -260,6 +244,40 @@ export default function GamePage() {
     }
   }
 
+  async function handleLobbyRoundsChange(value: number) {
+    if (!roomCode || !sessionToken) return;
+    if (!ranked && !isClanBattle) return;
+    setHostSettingsError('');
+    try {
+      const room = await updateRoomSettings(roomCode, sessionToken, { maxRounds: value });
+      syncRoomFromDto(room);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: string } })?.response?.data;
+      setHostSettingsError(typeof msg === 'string' ? msg : 'Could not update rounds');
+    }
+  }
+
+  async function handleSaveTeamNames() {
+    if (!roomCode || !sessionToken || !amHost) return;
+    setHostSettingsError('');
+    try {
+      const room = await updateRoomSettings(roomCode, sessionToken, {
+        team1Name: team1Draft.trim(),
+        team2Name: team2Draft.trim(),
+      });
+      syncRoomFromDto(room);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: string } })?.response?.data;
+      setHostSettingsError(typeof msg === 'string' ? msg : 'Could not save team names');
+    }
+  }
+
+  function handleKick() {
+    if (!roomCode || !kickTarget) return;
+    sendKick(roomCode, kickTarget.id);
+    setKickTarget(null);
+  }
+
   return (
     <div style={{
       ...styles.page,
@@ -305,11 +323,56 @@ export default function GamePage() {
       <div style={styles.layout}>
         {/* Left: opponents + trick area */}
         <div style={styles.center}>
+          {phase === 'LOBBY' ? (
+            <LobbyPanel
+              roomCode={roomCode ?? ''}
+              players={players}
+              playerId={playerId ?? ''}
+              hostPlayerId={hostPlayerId}
+              amHost={amHost}
+              isSpectator={isSpectator}
+              ranked={ranked}
+              maxRounds={maxRounds}
+              gameMode={gameMode}
+              playWithBot={playWithBot}
+              isClanBattle={isClanBattle}
+              canStart={canStart}
+              allHumansReady={allHumansReady}
+              myReady={Boolean(myPlayer?.ready)}
+              team1Name={team1Name}
+              team2Name={team2Name}
+              team1Draft={team1Draft}
+              team2Draft={team2Draft}
+              nicknameDraft={nicknameDraft}
+              nicknameError={nicknameError}
+              nicknameSaving={nicknameSaving}
+              shareMsg={shareMsg}
+              hostSettingsError={hostSettingsError}
+              kickTarget={kickTarget}
+              onShare={handleShare}
+              onNicknameChange={setNicknameDraft}
+              onNicknameSave={handleUpdateNickname}
+              onTeam1Draft={setTeam1Draft}
+              onTeam2Draft={setTeam2Draft}
+              onSaveTeamNames={handleSaveTeamNames}
+              onPickTeam={(team) => sendTeam(roomCode!, team)}
+              onRoundsChange={handleLobbyRoundsChange}
+              onReady={() => sendReady(roomCode!, !myPlayer?.ready)}
+              onStart={() => canStart && sendStart(roomCode!)}
+              onKickRequest={(id, username) => setKickTarget({ id, username })}
+              onKickCancel={() => setKickTarget(null)}
+              onKickConfirm={handleKick}
+            />
+          ) : (
+            <>
           <OpponentHands
             players={players}
             myPlayerId={playerId}
             currentTurnPlayerId={currentTurnPlayerId}
             scores={scores}
+            ruthlessHidden={ruthlessHidden}
+            phase={phase}
+            clanMode={isClanBattle}
           />
 
           <TrickArea
@@ -334,127 +397,17 @@ export default function GamePage() {
             )}
           </AnimatePresence>
 
-          {/* Lobby invite / share */}
-          {phase === 'LOBBY' && (
-            <div style={styles.shareBar}>
-              <div style={styles.shareCodeRow}>
-                <span style={styles.shareLabel}>Room code</span>
-                <span style={styles.shareCode}>{roomCode}</span>
-              </div>
-              <motion.button
-                type="button"
-                style={styles.shareBtn}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleShare}
-              >
-                🔗 Share invite link
-              </motion.button>
-              {shareMsg && <p style={styles.shareMsg}>{shareMsg}</p>}
-              <p style={styles.shareSub}>Anyone who opens the link joins this room.</p>
-            </div>
-          )}
-
-          {/* Lobby nickname */}
-          {phase === 'LOBBY' && (
-            <div style={styles.nicknameBar}>
-              <p style={styles.nicknameLabel}>Your nickname (shown to everyone)</p>
-              <div style={styles.nicknameRow}>
-                <input
-                  style={styles.nicknameInput}
-                  value={nicknameDraft}
-                  maxLength={20}
-                  onChange={(e) => setNicknameDraft(e.target.value)}
-                />
-                <button
-                  type="button"
-                  style={styles.nicknameBtn}
-                  disabled={nicknameSaving || nicknameDraft.trim() === (username ?? '')}
-                  onClick={handleUpdateNickname}
-                >
-                  {nicknameSaving ? '…' : 'Save'}
-                </button>
-              </div>
-              {nicknameError && <p style={styles.nicknameError}>{nicknameError}</p>}
-              <p style={styles.nicknameSub}>Change anytime before the game starts.</p>
-            </div>
-          )}
-
-          {/* Lobby ready + start */}
-          {phase === 'LOBBY' && !isSpectator && (
-            <div style={styles.readyBar}>
-              <div style={styles.readyList}>
-                {humanPlayers.map((p) => (
-                  <span
-                    key={p.id}
-                    style={{
-                      ...styles.readyChip,
-                      ...(p.ready ? styles.readyChipOn : {}),
-                    }}
-                  >
-                    {!p.bot && <TierBadge tier={p.tier} size="sm" />}
-                    {' '}{p.username}{p.id === playerId ? ' (you)' : ''}
-                    {p.ready ? ' ✓' : ' …'}
-                  </span>
-                ))}
-              </div>
-              <motion.button
-                type="button"
-                style={{
-                  ...styles.readyBtn,
-                  ...(myPlayer?.ready ? styles.readyBtnOn : {}),
-                }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => sendReady(roomCode, !myPlayer?.ready)}
-              >
-                {myPlayer?.ready ? 'Unready' : amHost ? "I'm ready (host)" : 'Ready up'}
-              </motion.button>
-            </div>
-          )}
-
-          {phase === 'LOBBY' && amHost && players.length >= 2 && (
-            <motion.button
-              style={{
-                ...styles.startBtn,
-                ...(!canStart ? styles.startBtnDisabled : {}),
-              }}
-              whileHover={canStart ? { scale: 1.05 } : undefined}
-              whileTap={canStart ? { scale: 0.95 } : undefined}
-              disabled={!canStart}
-              onClick={() => canStart && sendStart(roomCode)}
-            >
-              🚀 Start Game ({players.length} players)
-              {!canStart && ' — waiting for ready'}
-            </motion.button>
-          )}
-
-          {phase === 'LOBBY' && amHost && players.length < 2 && (
-            <p style={styles.waitHint}>
-              Share room code <strong>{roomCode}</strong> — need at least 2 players, or create a room with BOT Vitality
-            </p>
-          )}
-
-          {phase === 'LOBBY' && amHost && !isSpectator && players.length >= 2 && !canStart && (
-            <p style={styles.waitHint}>
-              Mark yourself ready — start unlocks once everyone (including you) is ready
-            </p>
-          )}
-
-          {phase === 'LOBBY' && !amHost && !isSpectator && (
-            <p style={styles.waitHint}>
-              {allHumansReady
-                ? <>Waiting for <strong>{players.find(p => p.id === hostPlayerId)?.username ?? 'host'}</strong> to start…</>
-                : 'Mark yourself ready — host can start once everyone is ready'}
-            </p>
-          )}
-
           {/* My hand (players only) */}
-          {phase !== 'LOBBY' && !isSpectator && (
+          {!isSpectator && (
             <div>
               <p style={{ ...styles.handLabel, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <TierBadge tier={myTier} size="sm" />
                 <span>
-                  Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
+                  Your hand{myPlayer ? (
+                    isClanBattle
+                      ? ` — ${myPlayer.teamId === 1 ? team1Name : myPlayer.teamId === 2 ? team2Name : 'Team'}: ${teamScores[String(myPlayer.teamId)] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}`
+                      : ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}`
+                  ) : ''}
                 </span>
               </p>
               <PlayerHand
@@ -467,6 +420,8 @@ export default function GamePage() {
               />
             </div>
           )}
+            </>
+          )}
         </div>
 
         {/* Right: scoreboard */}
@@ -478,6 +433,11 @@ export default function GamePage() {
             maxRounds={maxRounds}
             phase={phase}
             roundHistory={roundHistory}
+            gameMode={gameMode}
+            teamScores={teamScores}
+            team1Name={team1Name}
+            team2Name={team2Name}
+            ruthlessHidden={ruthlessHidden}
           />
           <div style={{ marginTop: 12 }}>
             <ChatPanel
@@ -514,6 +474,7 @@ export default function GamePage() {
           players={players}
           myPlayerId={playerId}
           faceColor={myFaceColor}
+          ruthlessHidden={ruthlessHidden}
           onBid={() => setShowBidModal(false)}
         />
       )}
@@ -523,6 +484,8 @@ export default function GamePage() {
           data={roundSummary}
           players={players}
           roundHistory={roundHistory}
+          team1Name={team1Name}
+          team2Name={team2Name}
           onDismiss={roundSummary.gameOver ? handleGameOver : dismissRoundSummary}
         />
       )}
@@ -586,6 +549,140 @@ const styles: Record<string, React.CSSProperties> = {
   },
   pageIncognito: {
     background: 'linear-gradient(160deg, #0a0a0c 0%, #121218 50%, #0d0d12 100%)',
+  },
+  modeBanner: {
+    margin: '8px 16px 0',
+    padding: '10px 14px',
+    borderRadius: 10,
+    background: 'rgba(241, 196, 15, 0.1)',
+    border: '1px solid rgba(241, 196, 15, 0.25)',
+    fontSize: 13,
+    color: '#fff',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  modeBannerLabel: {
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  modeHint: { fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: 500 },
+  clanLobby: {
+    margin: '12px 0',
+    padding: 16,
+    borderRadius: 12,
+    background: 'rgba(0,0,0,0.25)',
+    border: '1px solid rgba(255,255,255,0.1)',
+  },
+  clanTitle: { margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: '#f1c40f', textAlign: 'center' },
+  clanPickRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 },
+  clanPickBtn: {
+    padding: '12px 10px', borderRadius: 10, border: '2px solid', background: 'rgba(0,0,0,0.2)',
+    color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+  },
+  clanTeam1: { borderColor: 'rgba(52, 152, 219, 0.5)', color: '#3498db' },
+  clanTeam2: { borderColor: 'rgba(231, 76, 60, 0.5)', color: '#e74c3c' },
+  clanPickActive: { background: 'rgba(255,255,255,0.12)' },
+  clanColumns: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+  clanCol: { padding: 10, borderRadius: 10, background: 'rgba(255,255,255,0.04)' },
+  clanColTitle: { fontSize: 12, fontWeight: 800, marginBottom: 8 },
+  clanSlot: { fontSize: 12, padding: '6px 8px', marginBottom: 4, borderRadius: 6, background: 'rgba(0,0,0,0.2)' },
+  clanEmpty: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' },
+  clanNameEdit: {
+    display: 'grid',
+    gap: 8,
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.04)',
+  },
+  clanNameLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'rgba(255,255,255,0.65)',
+  },
+  clanNameInput: {
+    padding: '8px 10px',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(0,0,0,0.25)',
+    color: '#fff',
+    fontSize: 13,
+  },
+  clanNameSave: {
+    padding: '8px 12px',
+    borderRadius: 8,
+    border: 'none',
+    background: '#74c69d',
+    color: '#0d2b1a',
+    fontWeight: 700,
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+  hostPanel: {
+    margin: '12px 0',
+    padding: 14,
+    borderRadius: 12,
+    background: 'rgba(241, 196, 15, 0.08)',
+    border: '1px solid rgba(241, 196, 15, 0.25)',
+  },
+  hostTitle: { margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#f1c40f' },
+  hostRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 8,
+  },
+  hostSelect: {
+    padding: '6px 10px',
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(0,0,0,0.25)',
+    color: '#fff',
+    fontSize: 13,
+  },
+  hostNote: { margin: '4px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 },
+  hostError: { margin: '8px 0 0', fontSize: 12, color: '#e74c3c' },
+  readyRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  kickBtn: {
+    padding: '4px 10px',
+    borderRadius: 6,
+    border: '1px solid rgba(231, 76, 60, 0.45)',
+    background: 'rgba(231, 76, 60, 0.15)',
+    color: '#e74c3c',
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  kickConfirm: { display: 'flex', gap: 6 },
+  kickYes: {
+    padding: '4px 8px',
+    borderRadius: 6,
+    border: 'none',
+    background: '#e74c3c',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  kickNo: {
+    padding: '4px 8px',
+    borderRadius: 6,
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    cursor: 'pointer',
   },
   pauseOverlay: {
     position: 'fixed', inset: 0, zIndex: 250,
