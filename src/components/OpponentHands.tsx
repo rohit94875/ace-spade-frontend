@@ -12,12 +12,13 @@ interface Props {
   scores: Record<string, number>;
   ruthlessHidden?: boolean;
   phase?: string | null;
+  clanMode?: boolean;
 }
 
 const PLACEHOLDER_CARD = { suit: 'SPADES' as const, rank: 'ACE' as const, deckIndex: 0, playOrder: 0 };
 
 export default function OpponentHands({
-  players, myPlayerId, currentTurnPlayerId, scores, ruthlessHidden, phase,
+  players, myPlayerId, currentTurnPlayerId, scores, ruthlessHidden, phase, clanMode,
 }: Props) {
   const opponents = players.filter((p) => p.id !== myPlayerId);
   const hideBids = ruthlessHidden && shouldHideRuthlessBids(phase);
@@ -48,7 +49,7 @@ export default function OpponentHands({
             </div>
 
             <div style={styles.stats}>
-              <span title="Score">🏆 {score}</span>
+              {!clanMode && <span title="Score">🏆 {score}</span>}
               <span title="Bid">
                 🎯 {hideBids
                   ? (player.bidPlaced ? '✓' : '?')

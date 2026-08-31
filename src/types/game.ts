@@ -161,6 +161,10 @@ export interface RoundEndedPayload {
   cumulativeScores: Record<string, number>;
   bids: Record<string, number>;
   tricksWon: Record<string, number>;
+  teamRoundScores?: Record<string, number>;
+  teamCumulativeScores?: Record<string, number>;
+  teamBids?: Record<string, number>;
+  teamTricksWon?: Record<string, number>;
   gameOver: boolean;
   winnerUsername?: string;
   winnerScore?: number;

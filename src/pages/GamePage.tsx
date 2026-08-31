@@ -372,6 +372,7 @@ export default function GamePage() {
             scores={scores}
             ruthlessHidden={ruthlessHidden}
             phase={phase}
+            clanMode={isClanBattle}
           />
 
           <TrickArea
@@ -402,7 +403,11 @@ export default function GamePage() {
               <p style={{ ...styles.handLabel, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <TierBadge tier={myTier} size="sm" />
                 <span>
-                  Your hand{myPlayer ? ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}` : ''}
+                  Your hand{myPlayer ? (
+                    isClanBattle
+                      ? ` — ${myPlayer.teamId === 1 ? team1Name : myPlayer.teamId === 2 ? team2Name : 'Team'}: ${teamScores[String(myPlayer.teamId)] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}`
+                      : ` — Score: ${scores[playerId] ?? 0} | Bid: ${myPlayer.bid ?? '–'} | Tricks: ${myPlayer.tricksWon}`
+                  ) : ''}
                 </span>
               </p>
               <PlayerHand
@@ -479,6 +484,8 @@ export default function GamePage() {
           data={roundSummary}
           players={players}
           roundHistory={roundHistory}
+          team1Name={team1Name}
+          team2Name={team2Name}
           onDismiss={roundSummary.gameOver ? handleGameOver : dismissRoundSummary}
         />
       )}

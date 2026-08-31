@@ -26,3 +26,7 @@ export function roundScoreColor(earned: number, hit?: boolean): string {
 export function shouldHideRuthlessBids(phase: string | null | undefined): boolean {
   return phase === 'BIDDING' || phase === 'PLAYING';
 }
+
+export function clanTeamHit(teamBid: number, teamTricks: number): boolean {
+  return teamBid === teamTricks;
+}

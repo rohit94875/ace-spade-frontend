@@ -13,6 +13,9 @@ export interface RoundHistoryEntry {
   bids: Record<string, number>;
   tricksWon: Record<string, number>;
   roundScores: Record<string, number>;
+  teamRoundScores?: Record<string, number>;
+  teamBids?: Record<string, number>;
+  teamTricksWon?: Record<string, number>;
 }
 
 interface LastTrick {
@@ -27,6 +30,10 @@ interface RoundSummary {
   cumulativeScores: Record<string, number>;
   bids: Record<string, number>;
   tricksWon: Record<string, number>;
+  teamRoundScores?: Record<string, number>;
+  teamCumulativeScores?: Record<string, number>;
+  teamBids?: Record<string, number>;
+  teamTricksWon?: Record<string, number>;
   gameOver: boolean;
   winnerUsername?: string;
   winnerScore?: number;
@@ -338,6 +345,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
           bids: r.bids,
           tricksWon: r.tricksWon,
           roundScores: r.roundScores,
+          teamRoundScores: r.teamRoundScores,
+          teamBids: r.teamBids,
+          teamTricksWon: r.teamTricksWon,
         };
         set({
           roundSummary: {
@@ -346,6 +356,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
             cumulativeScores: r.cumulativeScores,
             bids: r.bids,
             tricksWon: r.tricksWon,
+            teamRoundScores: r.teamRoundScores,
+            teamCumulativeScores: r.teamCumulativeScores,
+            teamBids: r.teamBids,
+            teamTricksWon: r.teamTricksWon,
             gameOver: r.gameOver,
             winnerUsername: r.winnerUsername,
             winnerScore: r.winnerScore,
@@ -353,7 +367,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
             forfeitedUsername: r.forfeitedUsername,
             ratingUpdates: r.ratingUpdates,
           },
-          scores: r.cumulativeScores,
+          scores: r.teamCumulativeScores ? s.scores : r.cumulativeScores,
+          teamScores: r.teamCumulativeScores ?? s.teamScores,
           phase: r.gameOver ? 'GAME_END' : 'ROUND_END',
           roundHistory: [...s.roundHistory, historyEntry],
           paused: false,
