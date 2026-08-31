@@ -53,8 +53,6 @@ export interface SeasonRewardsGroup {
   rewards: SeasonReward[];
 }
 
-export const MIN_RANKED_GAMES_FOR_REWARDS = 5;
-
 export const REWARD_LABELS: Record<RewardSymbolType, string> = {
   SAND_CARD: 'Sand Card',
   BRONZE_CARD: 'Bronze Card',
@@ -72,3 +70,23 @@ export const REWARD_LABELS: Record<RewardSymbolType, string> = {
   BID_MASTER: 'Bid Master',
   FINISHER: 'Finisher',
 };
+
+export const MIN_RANKED_GAMES_FOR_REWARDS = 5;
+
+const TIER_CARDS: RewardSymbolType[] = [
+  'SAND_CARD', 'BRONZE_CARD', 'SILVER_CARD', 'GOLD_CARD',
+  'PLATINUM_CARD', 'DIAMOND_CARD', 'ACE_CARD',
+];
+
+const AWARD_BADGES: RewardSymbolType[] = [
+  'TOP_MMR', 'MOST_MATCHES', 'MOST_WINS', 'MOST_LOSSES',
+  'WIN_STREAK', 'LOSS_STREAK', 'BID_MASTER', 'FINISHER',
+];
+
+export function isTierCard(symbol: RewardSymbolType): boolean {
+  return TIER_CARDS.includes(symbol);
+}
+
+export function isAwardBadge(symbol: RewardSymbolType): boolean {
+  return AWARD_BADGES.includes(symbol);
+}

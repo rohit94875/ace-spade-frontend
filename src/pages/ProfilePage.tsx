@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { getMyHistory, getUserHistory, getUserProfile } from '../services/authApi';
-import { getAllMySeasonRewards, getCurrentSeason } from '../services/seasonApi';
+import { getAllMySeasonRewards, getCurrentSeason, getUserSeasonRewards } from '../services/seasonApi';
 import type { MatchHistoryEntry, PublicUserProfile } from '../types/auth';
 import type { CurrentSeason, SeasonRewardsGroup } from '../types/season';
-import { MIN_RANKED_GAMES_FOR_REWARDS } from '../types/season';
+import { isAwardBadge, isTierCard, MIN_RANKED_GAMES_FOR_REWARDS } from '../types/season';
 import MatchHistoryCard from '../components/MatchHistoryCard';
-import RewardBadge, { isAwardBadge, isTierCard } from '../components/RewardBadge';
+import RewardBadge from '../components/RewardBadge';
+import { sortSeasonRewards } from '../utils/rewardSort';
 import TierBadge from '../components/TierBadge';
 import RejoinGameBanner from '../components/RejoinGameBanner';
 import { tierColor } from '../constants/tiers';
@@ -58,15 +59,18 @@ export default function ProfilePage() {
   }, [isOwnProfile, viewingUserId, refreshProfile, getAccessToken]);
 
   useEffect(() => {
-    if (!isOwnProfile) return;
+    if (!viewingUserId || Number.isNaN(viewingUserId)) return;
+    const loadRewards = isOwnProfile
+      ? getAllMySeasonRewards()
+      : getUserSeasonRewards(viewingUserId);
     Promise.all([
-      getAllMySeasonRewards().catch(() => [] as SeasonRewardsGroup[]),
+      loadRewards.catch(() => [] as SeasonRewardsGroup[]),
       getCurrentSeason().catch(() => null),
     ]).then(([groups, current]) => {
       setRewardGroups(groups);
       setCurrentSeason(current);
     });
-  }, [isOwnProfile]);
+  }, [isOwnProfile, viewingUserId]);
 
   if (!currentUser) return null;
 
@@ -219,15 +223,26 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {(!isOwnProfile || tab === 'rewards') && isOwnProfile && (
+        {(!isOwnProfile || tab === 'rewards') && (
           <section>
             <h2 style={styles.sectionTitle}>Season rewards</h2>
             <p style={styles.rewardsNote}>
-              Tier cards and award badges unlock when a tracked season ends.
-              You need at least {MIN_RANKED_GAMES_FOR_REWARDS} ranked classic games that season.
+              {isOwnProfile ? (
+                <>
+                  <strong>Rank</strong> = tier playing card at season end.
+                  {' '}<strong>Awards</strong> = unique badge if you were #1 in a category.
+                  {' '}<Link to="/seasons" style={styles.inlineLink}>What each award means →</Link>
+                </>
+              ) : (
+                <>
+                  {profile.username}&apos;s tier cards and season award badges.
+                  {' '}<Link to="/seasons" style={styles.inlineLink}>Season awards →</Link>
+                </>
+              )}
+              {' '}At least {MIN_RANKED_GAMES_FOR_REWARDS} ranked classic games required.
             </p>
 
-            {currentSeason
+            {isOwnProfile && currentSeason
               && (currentSeason.status === 'ACTIVE' || currentSeason.status === 'GRACE')
               && currentSeason.rewardsTracked
               && profile.gamesPlayed >= MIN_RANKED_GAMES_FOR_REWARDS
@@ -246,14 +261,16 @@ export default function ProfilePage() {
 
             {rewardGroups.length === 0 ? (
               <p style={styles.muted}>
-                {profile.gamesPlayed < MIN_RANKED_GAMES_FOR_REWARDS
+                {isOwnProfile && profile.gamesPlayed < MIN_RANKED_GAMES_FOR_REWARDS
                   ? `Play ${MIN_RANKED_GAMES_FOR_REWARDS - profile.gamesPlayed} more ranked game${MIN_RANKED_GAMES_FOR_REWARDS - profile.gamesPlayed === 1 ? '' : 's'} to qualify for season rewards.`
-                  : 'No season rewards yet. Finish a tracked season to earn tier cards and awards.'}
+                  : isOwnProfile
+                    ? 'No season rewards yet. Finish a tracked season to earn tier cards and awards.'
+                    : 'No season rewards yet.'}
               </p>
             ) : (
               rewardGroups.map((group) => {
-                const tierRewards = group.rewards.filter((r) => isTierCard(r.symbolType));
-                const awardRewards = group.rewards.filter((r) => isAwardBadge(r.symbolType));
+                const tierRewards = sortSeasonRewards(group.rewards.filter((r) => isTierCard(r.symbolType)));
+                const awardRewards = sortSeasonRewards(group.rewards.filter((r) => isAwardBadge(r.symbolType)));
                 return (
                   <div key={group.seasonId} style={styles.seasonGroup}>
                     <div style={styles.seasonGroupHeader}>
@@ -276,7 +293,7 @@ export default function ProfilePage() {
                     )}
                     {awardRewards.length > 0 && (
                       <>
-                        <p style={styles.subsectionLabel}>Award badges</p>
+                        <p style={styles.subsectionLabel}>Award badges (unique symbols — not rank cards)</p>
                         <div style={styles.symbolGrid}>
                           {awardRewards.map((r) => (
                             <RewardBadge key={r.symbolType} symbol={r.symbolType} statValue={r.statValue} />
@@ -288,7 +305,7 @@ export default function ProfilePage() {
                 );
               })
             )}
-            <Link to="/seasons" style={styles.link}>View all seasons →</Link>
+            {isOwnProfile && <Link to="/seasons" style={styles.link}>View all seasons →</Link>}
           </section>
         )}
 
@@ -367,6 +384,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(116,198,157,0.15)', borderColor: 'rgba(116,198,157,0.4)', color: '#fff',
   },
   rewardsNote: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, lineHeight: 1.45 },
+  inlineLink: { color: '#74c69d', textDecoration: 'none', fontWeight: 600 },
   seasonGroup: { marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.08)' },
   seasonGroupHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   seasonGroupTitle: { margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' },

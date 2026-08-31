@@ -8,8 +8,11 @@ import { MIN_RANKED_GAMES_FOR_REWARDS } from '../types/season';
 import type { LeaderboardEntry } from '../types/auth';
 import SeasonCountdownBanner from '../components/SeasonCountdownBanner';
 import RewardBadge from '../components/RewardBadge';
+import AwardIcon from '../components/AwardIcon';
 import TierBadge from '../components/TierBadge';
 import { formatSeasonRange, seasonStatusColor, seasonStatusLabel } from '../utils/seasonFormat';
+import { sortAwardWinners } from '../utils/rewardSort';
+import { REWARD_LABELS } from '../types/season';
 
 export default function SeasonsPage() {
   const { id } = useParams();
@@ -130,11 +133,15 @@ export default function SeasonsPage() {
               <section style={styles.section}>
                 <h2 style={styles.sectionTitle}>Award winners</h2>
                 {detail.awardWinners.length > 0 ? (
-                  <div style={styles.winnerGrid}>
-                    {detail.awardWinners.map((w) => (
-                      <div key={`${w.symbolType}-${w.userId}`} style={styles.winnerCard}>
-                        <RewardBadge symbol={w.symbolType} statValue={w.statValue} compact />
+                  <div style={styles.winnerList}>
+                    {sortAwardWinners(detail.awardWinners).map((w) => (
+                      <div key={`${w.symbolType}-${w.userId}`} style={styles.winnerRow}>
+                        <AwardIcon symbol={w.symbolType} size={40} />
                         <Link to={`/profile/${w.userId}`} style={styles.winnerName}>{w.username}</Link>
+                        <span style={styles.winnerStat}>
+                          {REWARD_LABELS[w.symbolType]}
+                          {w.statValue != null && ` · ${w.symbolType === 'TOP_MMR' ? w.statValue.toFixed(0) : Math.round(w.statValue)}`}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -254,8 +261,13 @@ const styles: Record<string, React.CSSProperties> = {
   th: { fontSize: 11, color: 'rgba(255,255,255,0.45)', textAlign: 'left', paddingBottom: 8, fontWeight: 600, textTransform: 'uppercase' },
   td: { fontSize: 13, color: 'rgba(255,255,255,0.85)', padding: '8px 4px', borderTop: '1px solid rgba(255,255,255,0.06)' },
   playerLink: { color: '#74c69d', textDecoration: 'none' },
-  winnerGrid: { display: 'flex', flexWrap: 'wrap', gap: 16 },
-  winnerCard: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 100 },
-  winnerName: { color: '#74c69d', fontSize: 12, fontWeight: 600, textDecoration: 'none', textAlign: 'center' },
+  winnerList: { display: 'flex', flexDirection: 'column', gap: 10 },
+  winnerRow: {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '10px 12px', borderRadius: 10,
+    background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)',
+  },
+  winnerName: { color: '#74c69d', fontSize: 13, fontWeight: 600, textDecoration: 'none', flex: 1 },
+  winnerStat: { fontSize: 11, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' },
   tierPreview: { display: 'flex', flexWrap: 'wrap', gap: 12 },
 };

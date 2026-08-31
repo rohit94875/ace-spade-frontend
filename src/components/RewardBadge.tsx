@@ -1,23 +1,6 @@
 import type { RewardSymbolType } from '../types/season';
-import { REWARD_LABELS } from '../types/season';
-
-const TIER_CARDS: RewardSymbolType[] = [
-  'SAND_CARD', 'BRONZE_CARD', 'SILVER_CARD', 'GOLD_CARD',
-  'PLATINUM_CARD', 'DIAMOND_CARD', 'ACE_CARD',
-];
-
-const AWARD_BADGES: RewardSymbolType[] = [
-  'TOP_MMR', 'MOST_MATCHES', 'MOST_WINS', 'MOST_LOSSES',
-  'WIN_STREAK', 'LOSS_STREAK', 'BID_MASTER', 'FINISHER',
-];
-
-export function isTierCard(symbol: RewardSymbolType): boolean {
-  return TIER_CARDS.includes(symbol);
-}
-
-export function isAwardBadge(symbol: RewardSymbolType): boolean {
-  return AWARD_BADGES.includes(symbol);
-}
+import { isTierCard, REWARD_LABELS } from '../types/season';
+import AwardIcon from './AwardIcon';
 
 const TIER_COLORS: Partial<Record<RewardSymbolType, string>> = {
   SAND_CARD: '#c4a574',
@@ -29,16 +12,7 @@ const TIER_COLORS: Partial<Record<RewardSymbolType, string>> = {
   ACE_CARD: '#e74c3c',
 };
 
-const AWARD_EMOJI: Partial<Record<RewardSymbolType, string>> = {
-  TOP_MMR: '👑',
-  MOST_MATCHES: '🎯',
-  MOST_WINS: '🏆',
-  MOST_LOSSES: '💀',
-  WIN_STREAK: '🔥',
-  LOSS_STREAK: '❄️',
-  BID_MASTER: '🎲',
-  FINISHER: '✅',
-};
+export { isTierCard, isAwardBadge } from '../types/season';
 
 interface Props {
   symbol: RewardSymbolType;
@@ -75,8 +49,7 @@ export default function RewardBadge({ symbol, statValue, pending, compact }: Pro
           </>
         ) : (
           <>
-            <span style={styles.awardIcon}>{AWARD_EMOJI[symbol] ?? '★'}</span>
-            <span style={styles.awardLabel}>{REWARD_LABELS[symbol]}</span>
+            <AwardIcon symbol={symbol} size={compact ? 36 : 44} />
             {statValue != null && (
               <span style={styles.sub}>{formatStat(symbol, statValue)}</span>
             )}
@@ -115,7 +88,5 @@ const styles: Record<string, React.CSSProperties> = {
   suit: { fontSize: 22, lineHeight: 1 },
   rank: { fontSize: 11, fontWeight: 800, textAlign: 'center' },
   sub: { fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
-  awardIcon: { fontSize: 24, lineHeight: 1 },
-  awardLabel: { fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.85)' },
   caption: { display: 'block', fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 6 },
 };

@@ -25,6 +25,9 @@ export const getSeasonLeaderboard = (id: number, limit = 10) =>
 export const getAllMySeasonRewards = (): Promise<SeasonRewardsGroup[]> =>
   api.get('/seasons/rewards/me', { headers: authHeaders() }).then((r) => r.data);
 
+export const getUserSeasonRewards = (userId: number): Promise<SeasonRewardsGroup[]> =>
+  api.get(`/seasons/rewards/users/${userId}`).then((r) => r.data);
+
 export const getMySeasonRewards = (seasonId: number): Promise<SeasonReward[]> => {
   return api.get(`/seasons/${seasonId}/rewards/me`, {
     headers: authHeaders(),
