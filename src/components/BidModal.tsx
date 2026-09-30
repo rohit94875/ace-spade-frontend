@@ -27,9 +27,7 @@ export default function BidModal({
   const [cooldownSec, setCooldownSec] = useState(2);
   const sortHand = useDisplayStore((s) => s.sortHand);
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
-  const otherBids = ruthlessHidden
-    ? players.filter((p) => p.id !== myPlayerId && p.bidPlaced)
-    : players.filter((p) => p.id !== myPlayerId && p.bid !== null);
+  const otherBids = players.filter((p) => p.id !== myPlayerId && p.bid !== null);
   const visibleHand = orderHand(hand, sortHand);
 
   useEffect(() => {
@@ -66,13 +64,10 @@ export default function BidModal({
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
       >
-        <h2 style={styles.title}>
-          {ruthlessHidden ? 'Place Your Bid (hidden)' : 'Place Your Bid'}
-        </h2>
+        <h2 style={styles.title}>Place Your Bid</h2>
         <p style={styles.sub}>
           Round {round} — How many tricks will you win? (0–{round})
-          {ruthlessHidden && ' · Opponents won\'t see your bid until the round ends.'}
-          {ruthlessHidden && ' · Miss your bid → negative of the hit value (e.g. bid 1 → +21 or -21).'}
+          {ruthlessHidden && ' · Miss → −classic(max(bid, tricks)). Exact hit still scores normally (bid 4 / won 5 → −65).'}
         </p>
 
         <div style={styles.bidsSection}>
@@ -89,9 +84,7 @@ export default function BidModal({
                     {p.username}
                   </span>
                   <span style={styles.bidAmount}>
-                    {ruthlessHidden
-                      ? '✓ placed'
-                      : `${p.bid} trick${p.bid !== 1 ? 's' : ''}`}
+                    {`${p.bid} trick${p.bid !== 1 ? 's' : ''}`}
                   </span>
                 </div>
               ))}
@@ -136,7 +129,7 @@ export default function BidModal({
             >
               <span style={styles.bidNumber}>{n}</span>
               <span style={styles.scoreHint}>
-                {formatBidScoreHint(n, Boolean(ruthlessHidden))}
+                {formatBidScoreHint(n, Boolean(ruthlessHidden), round)}
               </span>
             </motion.button>
           ))}

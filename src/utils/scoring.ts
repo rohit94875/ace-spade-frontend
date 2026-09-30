@@ -3,10 +3,28 @@ export function classicBidPoints(bid: number): number {
   return bid === 0 ? 10 : 10 + bid * 11;
 }
 
-/** Bid button label — ruthless shows symmetric +/- (e.g. +21/-21). */
-export function formatBidScoreHint(bid: number, ruthless: boolean): string {
-  const pts = classicBidPoints(bid);
-  return ruthless ? `+${pts}/-${pts}` : bid === 0 ? '+10' : `+${pts}`;
+/**
+ * Ruthless miss penalty uses classic points of max(bid, tricksWon).
+ * Bid buttons only know the bid + max tricks this round (round number).
+ */
+export function ruthlessMissPoints(bid: number, tricksWon: number): number {
+  return classicBidPoints(Math.max(bid, tricksWon));
+}
+
+/**
+ * Bid button label — ruthless: hit = classic(bid); miss can be worse if you take more
+ * than you bid (up to classic(maxTricksThisRound)).
+ */
+export function formatBidScoreHint(bid: number, ruthless: boolean, maxTricksThisRound?: number): string {
+  const hit = classicBidPoints(bid);
+  if (!ruthless) {
+    return bid === 0 ? '+10' : `+${hit}`;
+  }
+  const worstMiss = classicBidPoints(Math.max(bid, maxTricksThisRound ?? bid));
+  if (worstMiss === hit) {
+    return `+${hit}/-${hit}`;
+  }
+  return `+${hit}/-${hit}…-${worstMiss}`;
 }
 
 export function formatRoundScore(earned: number): string {
@@ -22,9 +40,9 @@ export function roundScoreColor(earned: number, hit?: boolean): string {
   return 'rgba(255,255,255,0.4)';
 }
 
-/** Ruthless hidden bids stay secret through bidding and play; revealed at round end. */
-export function shouldHideRuthlessBids(phase: string | null | undefined): boolean {
-  return phase === 'BIDDING' || phase === 'PLAYING';
+/** @deprecated Bids are always visible; kept for any leftover call sites. */
+export function shouldHideRuthlessBids(_phase: string | null | undefined): boolean {
+  return false;
 }
 
 export function clanTeamHit(teamBid: number, teamTricks: number): boolean {

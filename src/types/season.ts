@@ -33,6 +33,7 @@ export interface SeasonRewardWinner {
   userId: number;
   username: string;
   statValue?: number | null;
+  gameMode?: string;
 }
 
 export interface SeasonDetail extends SeasonSummary {
@@ -43,6 +44,7 @@ export interface SeasonDetail extends SeasonSummary {
 export interface SeasonReward {
   symbolType: RewardSymbolType;
   statValue?: number | null;
+  gameMode?: string;
 }
 
 export interface SeasonRewardsGroup {

@@ -19,8 +19,12 @@ export const listSeasons = (): Promise<SeasonSummary[]> =>
 export const getSeasonDetail = (id: number): Promise<SeasonDetail> =>
   api.get(`/seasons/${id}`).then((r) => r.data);
 
-export const getSeasonLeaderboard = (id: number, limit = 10) =>
-  api.get(`/seasons/${id}/leaderboard`, { params: { limit } }).then((r) => r.data);
+export const getSeasonLeaderboard = (
+  id: number,
+  limit = 10,
+  gameMode: 'CLASSIC' | 'RUTHLESS_HIDDEN' = 'CLASSIC',
+) =>
+  api.get(`/seasons/${id}/leaderboard`, { params: { limit, gameMode } }).then((r) => r.data);
 
 export const getAllMySeasonRewards = (): Promise<SeasonRewardsGroup[]> =>
   api.get('/seasons/rewards/me', { headers: authHeaders() }).then((r) => r.data);

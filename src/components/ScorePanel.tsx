@@ -3,7 +3,7 @@ import { PlayerDto } from '../types/game';
 import { RoundHistoryEntry } from '../store/gameStore';
 import type { GameMode } from '../constants/gameModes';
 import { gameModeLabel } from '../constants/gameModes';
-import { formatRoundScore, roundScoreColor, shouldHideRuthlessBids, clanTeamHit } from '../utils/scoring';
+import { formatRoundScore, roundScoreColor, clanTeamHit } from '../utils/scoring';
 
 interface Props {
   players: PlayerDto[];
@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function ScorePanel({
-  players, scores, round, maxRounds, phase, roundHistory, gameMode, teamScores, team1Name, team2Name, ruthlessHidden,
+  players, scores, round, maxRounds, phase, roundHistory, gameMode, teamScores, team1Name, team2Name,
 }: Props) {
   const [showHistory, setShowHistory] = useState(false);
   const isClan = gameMode === 'CLAN_BATTLE';
@@ -78,9 +78,7 @@ export default function ScorePanel({
                 {p.username}
               </td>
               <td style={styles.td}>
-                {ruthlessHidden && shouldHideRuthlessBids(phase) && p.bid == null && p.bidPlaced
-                  ? '✓'
-                  : (p.bid ?? '–')}
+                {p.bid ?? '–'}
               </td>
               <td style={styles.td}>{p.tricksWon}</td>
               {!isClan && (

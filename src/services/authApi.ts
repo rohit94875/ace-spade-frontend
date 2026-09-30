@@ -25,8 +25,11 @@ export const getMe = (accessToken: string): Promise<UserProfile> =>
     headers: { Authorization: `Bearer ${accessToken}` },
   }).then((r) => r.data);
 
-export const getLeaderboard = (limit = 50): Promise<LeaderboardEntry[]> =>
-  api.get('/rankings/leaderboard', { params: { limit } }).then((r) => r.data);
+export const getLeaderboard = (
+  limit = 50,
+  gameMode: 'CLASSIC' | 'RUTHLESS_HIDDEN' = 'CLASSIC',
+): Promise<LeaderboardEntry[]> =>
+  api.get('/rankings/leaderboard', { params: { limit, gameMode } }).then((r) => r.data);
 
 export const getMyHistory = (accessToken: string): Promise<MatchHistoryEntry[]> =>
   api.get('/rankings/history/me', {

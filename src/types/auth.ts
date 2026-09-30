@@ -58,5 +58,6 @@ export interface MatchHistoryEntry {
   placement?: number;
   winnerUsername?: string;
   winnerScore?: number;
+  gameMode?: string;
   opponents?: { username: string; score: number }[];
 }

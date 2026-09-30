@@ -19,8 +19,10 @@ export const GAME_MODES: GameModeOption[] = [
   {
     id: 'RUTHLESS_HIDDEN',
     icon: '🎭',
-    name: 'Ruthless & Hidden',
-    description: 'Bids hidden until round ends. Miss your bid → negative of what you would have scored. Separate MMR.',
+    name: 'Ruthless',
+    description:
+      'Exact bid → classic points. Miss → negative of max(bid, tricks) ' +
+      '(e.g. bid 4 / won 5 → −65). Separate MMR.',
     rankedAllowed: true,
   },
   {
