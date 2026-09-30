@@ -7,12 +7,15 @@ import type { MatchHistoryEntry, PublicUserProfile } from '../types/auth';
 import type { CurrentSeason, SeasonRewardsGroup } from '../types/season';
 import { isAwardBadge, isTierCard, MIN_RANKED_GAMES_FOR_REWARDS } from '../types/season';
 import MatchHistoryCard from '../components/MatchHistoryCard';
+import { mergeModeRatings } from '../components/ModeRatingsBar';
 import RewardBadge from '../components/RewardBadge';
 import { sortSeasonRewards } from '../utils/rewardSort';
 import TierBadge from '../components/TierBadge';
 import RejoinGameBanner from '../components/RejoinGameBanner';
 import { tierColor } from '../constants/tiers';
 import { RANKED_MIN_ROUNDS, RANKED_MAX_ROUNDS } from '../constants/gameLength';
+import { gameModeLabel } from '../constants/gameModes';
+import type { ModeRating } from '../types/auth';
 
 type ProfileTab = 'rewards' | 'history';
 
@@ -99,10 +102,16 @@ export default function ProfilePage() {
 
   if (!profile) return null;
 
-  const placementLeft = Math.max(0, profile.placementRequired - profile.placementGames);
-  const mmrDisplay = profile.placementComplete
-    ? profile.mmr.toFixed(1)
-    : `${profile.mmr.toFixed(1)} (placing)`;
+  const modeRatings: ModeRating[] = mergeModeRatings(profile.modeRatings, {
+    mmr: profile.mmr,
+    tier: profile.tier,
+    placementComplete: profile.placementComplete,
+    placementGames: profile.placementGames,
+    placementRequired: profile.placementRequired,
+  });
+
+  const classic = modeRatings.find((m) => m.gameMode === 'CLASSIC') ?? modeRatings[0];
+  const placementLeft = Math.max(0, classic.placementRequired - classic.placementGames);
 
   return (
     <div style={styles.page}>
@@ -118,10 +127,10 @@ export default function ProfilePage() {
         <div style={styles.header}>
           <div style={styles.titleRow}>
             <TierBadge
-              tier={profile.tier}
-              placing={!profile.placementComplete}
-              placementGames={profile.placementGames}
-              placementRequired={profile.placementRequired}
+              tier={classic.tier}
+              placing={!classic.placementComplete}
+              placementGames={classic.placementGames}
+              placementRequired={classic.placementRequired}
               size="xl"
             />
             <h1 style={styles.title}>{profile.username}</h1>
@@ -130,29 +139,61 @@ export default function ProfilePage() {
             <button type="button" style={styles.logoutBtn} onClick={() => logout()}>Log out</button>
           )}
         </div>
-        {profile.tier && (
-          <p style={{ ...styles.tierLine, color: tierColor(profile.tier) }}>{profile.tier}</p>
+        {classic.tier && (
+          <p style={{ ...styles.tierLine, color: tierColor(classic.tier) }}>{classic.tier}</p>
         )}
         {isOwnProfile && currentUser && (
           <p style={styles.email}>{currentUser.email}</p>
         )}
 
+        <section style={styles.modeSection}>
+          <h2 style={styles.modeSectionTitle}>Ranked MMR by mode</h2>
+          <div style={styles.modeCards}>
+            {modeRatings.map((m) => {
+              const placing = !m.placementComplete;
+              return (
+                <div key={m.gameMode} style={styles.modeCard}>
+                  <div style={styles.modeCardHead}>
+                    <TierBadge
+                      tier={m.tier}
+                      placing={placing}
+                      placementGames={m.placementGames}
+                      placementRequired={m.placementRequired}
+                      size="md"
+                    />
+                    <span style={styles.modeCardName}>{gameModeLabel(m.gameMode)}</span>
+                  </div>
+                  <div style={styles.modeCardStat}>
+                    <span style={styles.statLabel}>MMR</span>
+                    <span style={styles.statValue}>
+                      {placing ? `${m.mmr.toFixed(1)} (placing)` : m.mmr.toFixed(1)}
+                    </span>
+                  </div>
+                  <div style={styles.modeCardStat}>
+                    <span style={styles.statLabel}>{placing ? 'Placement' : 'Tier'}</span>
+                    <span style={styles.statValue}>
+                      {placing
+                        ? `${m.placementGames}/${m.placementRequired}`
+                        : (m.tier ?? '—')}
+                    </span>
+                  </div>
+                  <div style={styles.modeCardStat}>
+                    <span style={styles.statLabel}>Ladder rank</span>
+                    <span style={styles.statValue}>
+                      {placing ? '—' : m.rank != null ? `#${m.rank}` : '—'}
+                    </span>
+                  </div>
+                  <div style={styles.modeCardStat}>
+                    <span style={styles.statLabel}>Games</span>
+                    <span style={styles.statValue}>{m.gamesPlayed}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         <div style={styles.statGrid}>
-          <div style={{ ...styles.stat, ...styles.statHighlight }}>
-            <span style={styles.statLabel}>MMR</span>
-            <span style={styles.statValue}>{mmrDisplay}</span>
-          </div>
-          <div style={styles.stat}>
-            <span style={styles.statLabel}>Tier</span>
-            <span style={{ ...styles.statValue, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <TierBadge tier={profile.tier} size="sm" />
-              {profile.tier ?? (placementLeft > 0 ? `Placement (${profile.placementGames}/${profile.placementRequired})` : '—')}
-            </span>
-          </div>
-          <div style={styles.stat}>
-            <span style={styles.statLabel}>Games</span>
-            <span style={styles.statValue}>{profile.gamesPlayed}</span>
-          </div>
           <div style={styles.stat}>
             <span style={styles.statLabel}>Season</span>
             <span style={styles.statValue}>{profile.seasonId}</span>
@@ -175,15 +216,16 @@ export default function ProfilePage() {
           </p>
         )}
 
-        {isOwnProfile && !profile.placementComplete && (
+        {isOwnProfile && modeRatings.some((m) => !m.placementComplete) && (
           <p style={styles.placementNote}>
-            Play {placementLeft} more ranked game{placementLeft === 1 ? '' : 's'} to reveal your tier badge (after {profile.placementRequired} placement games).
+            Each ranked mode has its own placement ({classic.placementRequired} games). Classic left: {placementLeft}.
+            {' '}Ruthless placement is tracked separately.
           </p>
         )}
 
         {isOwnProfile && (
           <p style={styles.casualNote}>
-            Casual games (5 rounds) don&apos;t affect your rank. Create a ranked room from the lobby ({RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds) for longer games and leaderboard progress.
+            Casual games (5 rounds), Clan Battle, and Poker don&apos;t affect MMR. Create a ranked Classic or Ruthless room ({RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds) for ladder progress.
           </p>
         )}
 
@@ -344,6 +386,26 @@ const styles: Record<string, React.CSSProperties> = {
   tierLine: { fontSize: 13, fontWeight: 700, margin: '0 0 8px', paddingLeft: 84 },
   logoutBtn: { background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12 },
   email: { color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '4px 0 20px' },
+  modeSection: { marginBottom: 18 },
+  modeSectionTitle: { margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.7)' },
+  modeCards: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: 12,
+    marginBottom: 8,
+  },
+  modeCard: {
+    background: 'rgba(0,0,0,0.25)',
+    borderRadius: 12,
+    padding: 14,
+    border: '1px solid rgba(255,255,255,0.1)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  modeCardHead: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 },
+  modeCardName: { fontWeight: 800, color: '#fff', fontSize: 15 },
+  modeCardStat: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
   statGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 },
   stat: { background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: 12 },
   statHighlight: { border: '1px solid rgba(116,198,157,0.35)' },

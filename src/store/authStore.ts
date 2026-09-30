@@ -64,6 +64,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }
     }
     set({ initialized: true });
+    // Pull fresh profile (modeRatings / rank) even when the access token is still valid.
+    try {
+      const profile = await authApi.getMe(stored.accessToken);
+      set({ user: profile });
+      saveAuth({ ...stored, user: profile });
+    } catch {
+      /* keep cached user */
+    }
   },
 
   login: async (email, password) => {

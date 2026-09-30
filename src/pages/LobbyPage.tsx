@@ -15,10 +15,10 @@ import {
   resolveCreateMaxRounds,
   type RankedMaxRounds,
 } from '../constants/gameLength';
-import TierBadge from '../components/TierBadge';
 import RejoinGameBanner from '../components/RejoinGameBanner';
 import SeasonCountdownBanner from '../components/SeasonCountdownBanner';
 import GameModePicker from '../components/GameModePicker';
+import ModeRatingsBar from '../components/ModeRatingsBar';
 import type { GameMode } from '../constants/gameModes';
 import { GAME_MODES } from '../constants/gameModes';
 import { gameModeLabel } from '../constants/gameModes';
@@ -74,6 +74,9 @@ export default function LobbyPage() {
     const errData = (e as { response?: { data?: { errors?: string[]; message?: string } | string } })?.response?.data;
     if (errData && typeof errData === 'object' && errData.errors?.length) {
       return errData.errors[0];
+    }
+    if (errData && typeof errData === 'object' && errData.message) {
+      return errData.message;
     }
     if (errData && typeof errData === 'string') {
       return errData;
@@ -244,23 +247,25 @@ export default function LobbyPage() {
 
         <div style={styles.authBar}>
           {authUser && (
-            <>
-              <span style={styles.mmrBadge}>
-                <TierBadge
-                  tier={authUser.tier}
-                  placing={!authUser.placementComplete}
-                  placementGames={authUser.placementGames}
-                  placementRequired={authUser.placementRequired}
-                  size="sm"
-                />
-                {' '}MMR {authUser.mmr.toFixed(1)}
-                {authUser.tier ? ` · ${authUser.tier}` : ` · Placing (${authUser.placementGames}/${authUser.placementRequired})`}
-              </span>
-              <Link to="/profile" style={styles.authLink}>Profile</Link>
-            </>
+            <div style={styles.mmrBadge}>
+              <ModeRatingsBar
+                compact
+                ratings={authUser.modeRatings}
+                fallback={{
+                  mmr: authUser.mmr,
+                  tier: authUser.tier,
+                  placementComplete: authUser.placementComplete,
+                  placementGames: authUser.placementGames,
+                  placementRequired: authUser.placementRequired,
+                }}
+              />
+            </div>
           )}
-          <Link to="/leaderboard" style={styles.authLink}>Leaderboard</Link>
-          <Link to="/seasons" style={styles.authLink}>Seasons</Link>
+          <div style={styles.authLinks}>
+            {authUser && <Link to="/profile" style={styles.authLink}>Profile</Link>}
+            <Link to="/leaderboard" style={styles.authLink}>Leaderboard</Link>
+            <Link to="/seasons" style={styles.authLink}>Seasons</Link>
+          </div>
         </div>
 
         <SeasonCountdownBanner />
@@ -382,7 +387,11 @@ export default function LobbyPage() {
         {mode === 'create' && (
           <div style={styles.panel}>
             <p style={styles.panelTitle}>Create a room</p>
-            <p style={styles.panelDesc}>You&apos;ll get a code to share with friends (2–8 players).</p>
+            <p style={styles.panelDesc}>
+              {gameMode === 'POKER'
+                ? "You'll get a code to share (2–6 players). Fixed-limit Hold'em until one stack remains."
+                : "You'll get a code to share with friends (2–8 players)."}
+            </p>
             <GameModePicker value={gameMode} onChange={onGameModeChange} />
             <div style={styles.badgeRow}>
               <span style={ranked ? styles.rankedBadge : styles.casualBadge}>
@@ -390,7 +399,9 @@ export default function LobbyPage() {
                   ? `Ranked · ${rankedMaxRounds} rounds`
                   : gameMode === 'CLAN_BATTLE'
                     ? `Clan Battle · ${rankedMaxRounds} rounds (unranked)`
-                    : `Casual · ${CASUAL_MAX_ROUNDS} rounds`}
+                    : gameMode === 'POKER'
+                      ? 'Poker · play until bust (unranked)'
+                      : `Casual · ${CASUAL_MAX_ROUNDS} rounds`}
               </span>
               {!ranked && playWithBot && (
                 <span style={styles.botBadge}>+ BOT Vitality</span>
@@ -482,10 +493,13 @@ export default function LobbyPage() {
                   <input
                     type="checkbox"
                     checked={playWithBot}
-                    disabled={ranked}
+                    disabled={ranked || gameMode === 'POKER'}
                     onChange={(e) => setPlayWithBot(e.target.checked)}
                   />
-                  <span>Add BOT Vitality to fill an empty seat {ranked ? '(disabled for ranked)' : ''}</span>
+                  <span>
+                    Add BOT Vitality to fill an empty seat
+                    {ranked ? ' (disabled for ranked)' : gameMode === 'POKER' ? ' (disabled for Poker)' : ''}
+                  </span>
                 </label>
                 <p style={styles.optionLabel}>If someone leaves:</p>
                 <label style={styles.radioRow}>
@@ -552,11 +566,25 @@ const styles: Record<string, React.CSSProperties> = {
   gameName: { fontSize: 30, fontWeight: 800, color: '#fff', letterSpacing: 1, margin: '8px 0 4px' },
   subtitle: { color: 'rgba(255,255,255,0.55)', fontSize: 13, margin: 0 },
   authBar: {
-    display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center',
-    justifyContent: 'center', marginBottom: 14, fontSize: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    alignItems: 'stretch',
+    marginBottom: 14,
+    fontSize: 12,
+    width: '100%',
   },
-  mmrBadge: { color: '#f1c40f', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 },
-  authLink: { color: '#74c69d', textDecoration: 'none' },
+  mmrBadge: {
+    width: '100%',
+  },
+  authLinks: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  authLink: { color: '#74c69d', textDecoration: 'none', fontWeight: 600 },
   input: {
     padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
     background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: 15,

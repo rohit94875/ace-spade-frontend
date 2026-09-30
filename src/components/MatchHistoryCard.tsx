@@ -28,7 +28,10 @@ export default function MatchHistoryCard({ match }: { match: MatchHistoryEntry }
           <span style={styles.room}>
             Room {match.roomCode}
             {match.gameMode && match.gameMode !== 'CLASSIC'
-              ? ` · ${match.gameMode === 'RUTHLESS_HIDDEN' ? 'Ruthless' : match.gameMode === 'CLAN_BATTLE' ? 'Clan' : match.gameMode}`
+              ? ` · ${match.gameMode === 'RUTHLESS_HIDDEN' ? 'Ruthless'
+                : match.gameMode === 'CLAN_BATTLE' ? 'Clan'
+                : match.gameMode === 'POKER' ? 'Poker'
+                : match.gameMode}`
               : ''}
           </span>
         </div>
@@ -54,7 +57,8 @@ export default function MatchHistoryCard({ match }: { match: MatchHistoryEntry }
         )}
       </div>
 
-      {match.gameMode !== 'CLAN_BATTLE' && match.ratingBefore != null && match.ratingAfter != null && (
+      {match.gameMode !== 'CLAN_BATTLE' && match.gameMode !== 'POKER'
+        && match.ratingBefore != null && match.ratingAfter != null && (
         <div style={styles.mmrRow}>
           <span style={styles.mmrLabel}>MMR</span>
           <span style={styles.mmrValue}>
@@ -71,11 +75,16 @@ export default function MatchHistoryCard({ match }: { match: MatchHistoryEntry }
       {match.gameMode === 'CLAN_BATTLE' && (
         <p style={styles.clanNote}>Clan Battle — not ranked (no MMR change).</p>
       )}
+      {match.gameMode === 'POKER' && (
+        <p style={styles.clanNote}>Poker — not ranked (chip stacks only).</p>
+      )}
 
       {match.winnerUsername && (
         <p style={styles.winnerLine}>
           Winner: <strong>{match.winnerUsername}</strong>
-          {match.winnerScore != null ? ` (${match.winnerScore} pts)` : ''}
+          {match.winnerScore != null
+            ? ` (${match.winnerScore}${match.gameMode === 'POKER' ? ' chips' : ' pts'})`
+            : ''}
         </p>
       )}
 

@@ -17,6 +17,7 @@ import PresenceBar from '../components/PresenceBar';
 import ChatPanel from '../components/ChatPanel';
 import GameHeader from '../components/GameHeader';
 import LobbyPanel from '../components/LobbyPanel';
+import PokerTable from '../components/PokerTable';
 import TierBadge from '../components/TierBadge';
 import { tierCardFaceColor } from '../constants/tiers';
 import { useAuthStore } from '../store/authStore';
@@ -32,13 +33,14 @@ export default function GamePage() {
     wsConnected, setWsConnected, playWithBot, paused, pausedAuto, autoStartGame,
     presence, graceSeconds, chatMessages,
     isSpectator, spectators, botVotes, gameMode, teamScores, team1Name, team2Name,
-    kickedFromLobby, ranked,
+    kickedFromLobby, ranked, poker, pokerHandBanner, pokerBetweenHands,
     handleGameEvent, setHand, dismissRoundSummary, clearError, reset,
     applySnapshot, syncRoomFromDto,
   } = useGameStore();
 
   const ruthlessHidden = gameMode === 'RUTHLESS_HIDDEN';
   const isClanBattle = gameMode === 'CLAN_BATTLE';
+  const isPoker = gameMode === 'POKER';
 
   const [showBidModal, setShowBidModal] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState(username ?? '');
@@ -73,7 +75,7 @@ export default function GamePage() {
   // Haptic buzz + glow (handled in PlayerHand) when it becomes your turn.
   useEffect(() => {
     if (paused) return;
-    const myTurnNow = isMyTurn && (phase === 'BIDDING' || phase === 'PLAYING');
+    const myTurnNow = isMyTurn && (phase === 'BIDDING' || phase === 'PLAYING' || phase === 'POKER_HAND');
     if (myTurnNow && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate?.([120, 60, 120]);
     }
@@ -363,6 +365,34 @@ export default function GamePage() {
               onKickCancel={() => setKickTarget(null)}
               onKickConfirm={handleKick}
             />
+          ) : isPoker ? (
+            poker ? (
+              <>
+                {(pokerHandBanner || pokerBetweenHands) && phase !== 'GAME_END' && (
+                  <div style={{
+                    ...styles.lastTrickBanner,
+                    ...(pokerBetweenHands ? styles.pokerBetweenBanner : {}),
+                  }}>
+                    {pokerBetweenHands
+                      ? `Hand complete — next hand dealing soon…`
+                      : pokerHandBanner}
+                    {pokerBetweenHands && pokerHandBanner && (
+                      <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>{pokerHandBanner}</div>
+                    )}
+                  </div>
+                )}
+                <PokerTable
+                  roomCode={roomCode!}
+                  playerId={playerId!}
+                  poker={poker}
+                  hand={hand}
+                  isMyTurn={isMyTurn && phase === 'POKER_HAND' && !pokerBetweenHands}
+                  paused={paused || pokerBetweenHands}
+                />
+              </>
+            ) : (
+              <p style={styles.handLabel}>Dealing poker hand…</p>
+            )
           ) : (
             <>
           <OpponentHands
@@ -716,6 +746,13 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(241,196,15,0.15)', border: '1px solid rgba(241,196,15,0.4)',
     borderRadius: 10, padding: '8px 16px', textAlign: 'center' as const,
     color: '#f1c40f', fontSize: 14, fontWeight: 600,
+  },
+  pokerBetweenBanner: {
+    background: 'rgba(116,198,157,0.18)',
+    border: '1px solid rgba(116,198,157,0.5)',
+    color: '#95d5b2',
+    padding: '14px 18px',
+    fontSize: 15,
   },
   startBtn: {
     padding: '14px 28px', borderRadius: 12, border: 'none',

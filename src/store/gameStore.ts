@@ -3,7 +3,7 @@ import {
   Card, GamePhase, PlayerDto, RoomStateDto, TrickCard,
   TrickEndedPayload, RoundEndedPayload, GameEvent,
   ChatMessageDto, PlayerPresenceDto, SessionResumeResponse,
-  SpectatorDto,
+  SpectatorDto, PokerTableState,
 } from '../types/game';
 import { normalizeMaxRounds, CASUAL_MAX_ROUNDS, type MaxRounds } from '../constants/gameLength';
 import { saveSession, clearSession, StoredSession } from '../services/sessionStorage';
@@ -79,6 +79,10 @@ interface GameStore {
   team1Name: string;
   team2Name: string;
   kickedFromLobby: boolean;
+  poker: PokerTableState | null;
+  pokerHandBanner: string | null;
+  /** True while waiting for the next poker hand after a showdown. */
+  pokerBetweenHands: boolean;
 
   setSession: (data: {
     playerId: string;
@@ -141,6 +145,9 @@ const initialState = {
   team1Name: 'Blue Clan',
   team2Name: 'Red Clan',
   kickedFromLobby: false,
+  poker: null as PokerTableState | null,
+  pokerHandBanner: null as string | null,
+  pokerBetweenHands: false,
 };
 
 function applyRoomState(
@@ -166,6 +173,7 @@ function applyRoomState(
     teamScores: room.teamScores ?? {},
     team1Name: room.team1Name ?? 'Blue Clan',
     team2Name: room.team2Name ?? 'Red Clan',
+    poker: room.poker ?? null,
     ...extra,
   };
 }
@@ -254,16 +262,63 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
 
       case 'ROUND_STARTED': {
+        const isPoker = s.gameMode === 'POKER' || payload['poker'] != null;
         set({
-          phase: 'BIDDING',
+          phase: isPoker ? 'POKER_HAND' : 'BIDDING',
           round: payload['round'] as number,
-          players: payload['players'] as PlayerDto[],
+          players: (payload['players'] as PlayerDto[]) ?? s.players,
           currentTurnPlayerId: payload['currentTurnPlayerId'] as string,
           currentTrick: [],
           lastTrick: null,
           roundSummary: null,
           paused: false,
           pausedAuto: false,
+          scores: (payload['scores'] as Record<string, number>) ?? s.scores,
+          poker: (payload['poker'] as PokerTableState) ?? (isPoker ? s.poker : null),
+          pokerHandBanner: isPoker ? `Hand #${payload['handNumber'] ?? payload['round']}` : null,
+          pokerBetweenHands: false,
+        });
+        break;
+      }
+
+      case 'POKER_UPDATE': {
+        const turnId = payload['currentTurnPlayerId'] as string | null;
+        const poker = payload['poker'] as PokerTableState;
+        const isMyTurn = turnId != null && turnId === s.playerId;
+        set({
+          phase: (payload['phase'] as GamePhase) ?? 'POKER_HAND',
+          round: (payload['round'] as number) ?? s.round,
+          scores: (payload['scores'] as Record<string, number>) ?? s.scores,
+          players: (payload['players'] as PlayerDto[]) ?? s.players,
+          currentTurnPlayerId: turnId ?? null,
+          poker,
+          turnAlert: isMyTurn ? 'Your turn to act' : s.turnAlert,
+        });
+        break;
+      }
+
+      case 'POKER_HAND_ENDED': {
+        const poker = payload['poker'] as PokerTableState;
+        const gameOver = Boolean(payload['gameOver']);
+        const nextMs = Number(payload['nextHandInMs'] ?? 0);
+        set({
+          poker,
+          scores: (payload['scores'] as Record<string, number>) ?? s.scores,
+          pokerHandBanner: (payload['lastAction'] as string) ?? 'Hand over',
+          pokerBetweenHands: !gameOver && nextMs > 0,
+          phase: gameOver ? 'GAME_END' : 'ROUND_END',
+          roundSummary: gameOver
+            ? {
+                round: (payload['handNumber'] as number) ?? s.round,
+                roundScores: {},
+                cumulativeScores: (payload['scores'] as Record<string, number>) ?? s.scores,
+                bids: {},
+                tricksWon: {},
+                gameOver: true,
+                winnerUsername: payload['winnerUsername'] as string | undefined,
+                winnerScore: payload['winnerScore'] as number | undefined,
+              }
+            : s.roundSummary,
         });
         break;
       }
@@ -339,6 +394,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       case 'ROUND_ENDED':
       case 'GAME_ENDED': {
+        if (s.gameMode === 'POKER' || payload['poker'] != null || payload['handNumber'] != null) {
+          const gameOver = payload['gameOver'] !== false;
+          set({
+            poker: (payload['poker'] as PokerTableState) ?? s.poker,
+            scores: (payload['scores'] as Record<string, number>) ?? s.scores,
+            phase: gameOver ? 'GAME_END' : 'ROUND_END',
+            pokerHandBanner: (payload['lastAction'] as string) ?? s.pokerHandBanner,
+            roundSummary: gameOver
+              ? {
+                  round: (payload['handNumber'] as number) ?? s.round,
+                  roundScores: {},
+                  cumulativeScores: (payload['scores'] as Record<string, number>) ?? s.scores,
+                  bids: {},
+                  tricksWon: {},
+                  gameOver: true,
+                  winnerUsername: payload['winnerUsername'] as string | undefined,
+                  winnerScore: payload['winnerScore'] as number | undefined,
+                }
+              : s.roundSummary,
+            turnAlert: null,
+          });
+          break;
+        }
         const r = payload as unknown as RoundEndedPayload;
         const historyEntry: RoundHistoryEntry = {
           round: r.round,
