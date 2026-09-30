@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Host Lobby Controls — Ace Spade Mockup</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .game-shell {
+      background: #0a1f14;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .game-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-soft);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .room-code {
+      font-family: var(--mono);
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: 2px;
+      font-size: 16px;
+    }
+
+    .lobby-body {
+      padding: 20px 16px 24px;
+    }
+
+    .lobby-heading {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .lobby-sub {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .host-panel {
+      background: rgba(116, 198, 157, 0.06);
+      border: 1px solid rgba(116, 198, 157, 0.2);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .host-panel-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .setting-row label { font-size: 13px; color: var(--text-muted); }
+
+    .setting-row select {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      font-size: 13px;
+      min-width: 140px;
+    }
+
+    .player-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-soft);
+    }
+
+    .player-row.host { border-color: rgba(241, 196, 15, 0.3); }
+
+    .player-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .player-info { flex: 1; min-width: 0; }
+    .player-name { font-size: 14px; font-weight: 600; }
+    .player-meta { font-size: 11px; color: var(--text-dim); }
+
+    .ready-chip {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(116, 198, 157, 0.15);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .ready-chip.waiting {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-dim);
+    }
+
+    .kick-btn {
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .player-row:hover .kick-btn { opacity: 1; }
+
+    .ready-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-soft);
+    }
+
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 10;
+    }
+
+    .confirm-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      max-width: 320px;
+      width: 100%;
+    }
+
+    .confirm-box h3 { font-size: 16px; margin-bottom: 8px; }
+    .confirm-box p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+    .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← All mockups</a>
+    <div class="page-header">
+      <h1>Host lobby controls</h1>
+      <p>LOBBY phase only. Host can kick players and change round count before start. Click "Kick" to see confirm dialog.</p>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div class="game-shell">
+        <div class="game-top">
+          <span class="room-code">XK7M</span>
+          <span class="badge badge-accent">Ranked · Lobby</span>
+        </div>
+
+        <div class="lobby-body">
+          <div class="lobby-heading">Waiting for players</div>
+          <div class="lobby-sub">Share code XK7M · 4/8 seats · Host controls below</div>
+
+          <div class="host-panel">
+            <div class="host-panel-title">Host settings</div>
+            <div class="setting-row">
+              <label for="rounds">Number of rounds</label>
+              <select id="rounds">
+                <option>8 rounds (quick)</option>
+                <option selected>13 rounds (full)</option>
+                <option>10 rounds</option>
+                <option>11 rounds</option>
+              </select>
+            </div>
+            <p style="font-size:11px;color:var(--text-dim);margin:0;">Ranked: 8-13 rounds. Casual rooms stay at 5 rounds.</p>
+          </div>
+
+          <div class="player-list">
+            <div class="player-row host">
+              <div class="player-avatar" style="background:rgba(241,196,15,0.2);color:var(--gold);">Y</div>
+              <div class="player-info">
+                <div class="player-name">You <span style="font-size:11px;color:var(--gold);">(host)</span></div>
+                <div class="player-meta">Gold 2 · 1584 MMR</div>
+              </div>
+              <span class="ready-chip">Ready</span>
+            </div>
+
+            <div class="player-row">
+              <div class="player-avatar">A</div>
+              <div class="player-info">
+                <div class="player-name">AceHunter</div>
+                <div class="player-meta">Silver 1 · 1498 MMR</div>
+              </div>
+              <span class="ready-chip">Ready</span>
+              <button class="btn btn-danger btn-sm kick-btn" onclick="showKick('AceHunter')">Kick</button>
+            </div>
+
+            <div class="player-row">
+              <div class="player-avatar">T</div>
+              <div class="player-info">
+                <div class="player-name">TrickMaster</div>
+                <div class="player-meta">Bronze 3 · 1276 MMR</div>
+              </div>
+              <span class="ready-chip waiting">Waiting</span>
+              <button class="btn btn-danger btn-sm kick-btn" onclick="showKick('TrickMaster')">Kick</button>
+            </div>
+
+            <div class="player-row">
+              <div class="player-avatar" style="opacity:0.5;">+</div>
+              <div class="player-info">
+                <div class="player-name" style="color:var(--text-dim);">Empty seat</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ready-bar">
+            <button class="btn btn-ghost">I'm ready (host)</button>
+            <button class="btn btn-primary">Start game</button>
+          </div>
+          <p style="text-align:center;font-size:11px;color:var(--text-dim);margin-top:10px;">Waiting for TrickMaster to ready up</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="demo-label" style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">Non-host view</div>
+      <p style="font-size:13px;color:var(--text-muted);">
+        Regular players see the player list and ready buttons only — no kick buttons, no round selector.
+        Round count updates live via <code>ROOM_UPDATED</code> WebSocket event when host changes it.
+      </p>
+    </div>
+
+    <div class="mockup-note">
+      <strong>API:</strong> Kick via <code>POST /app/game/{code}/kick</code> (WS).
+      Rounds via <code>PATCH /api/rooms/{code}/settings</code>. Both blocked once phase leaves LOBBY.
+    </div>
+  </div>
+
+  <div class="confirm-overlay hidden" id="kick-modal">
+    <div class="confirm-box">
+      <h3>Remove player?</h3>
+      <p id="kick-msg">AceHunter will be removed from the lobby before the game starts.</p>
+      <div class="confirm-actions">
+        <button class="btn btn-ghost" onclick="hideKick()">Cancel</button>
+        <button class="btn btn-danger" onclick="hideKick()">Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showKick(name) {
+      document.getElementById('kick-msg').textContent = name + ' will be removed from the lobby before the game starts.';
+      document.getElementById('kick-modal').classList.remove('hidden');
+    }
+    function hideKick() {
+      document.getElementById('kick-modal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

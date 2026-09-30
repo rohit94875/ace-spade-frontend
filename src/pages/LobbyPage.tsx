@@ -12,10 +12,16 @@ import {
   RANKED_MIN_ROUNDS,
   RANKED_MAX_ROUNDS,
   RANKED_ROUND_OPTIONS,
+  resolveCreateMaxRounds,
   type RankedMaxRounds,
 } from '../constants/gameLength';
 import TierBadge from '../components/TierBadge';
 import RejoinGameBanner from '../components/RejoinGameBanner';
+import SeasonCountdownBanner from '../components/SeasonCountdownBanner';
+import GameModePicker from '../components/GameModePicker';
+import type { GameMode } from '../constants/gameModes';
+import { GAME_MODES } from '../constants/gameModes';
+import { gameModeLabel } from '../constants/gameModes';
 
 type LobbyMode = 'solo' | 'join' | 'create';
 
@@ -39,6 +45,7 @@ export default function LobbyPage() {
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [showRoomOptions, setShowRoomOptions] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [gameMode, setGameMode] = useState<GameMode>('CLASSIC');
   const [searchParams] = useSearchParams();
   const autoJoinAttempted = useRef(false);
 
@@ -108,8 +115,9 @@ export default function LobbyPage() {
         playWithBot,
         disconnectPolicy,
         ranked,
-        ranked ? rankedMaxRounds : CASUAL_MAX_ROUNDS,
+        resolveCreateMaxRounds(ranked, gameMode, rankedMaxRounds),
         publicRoom,
+        gameMode,
       );
       rememberNickname(trimmed);
       setSession({ ...res, isHost: true, playWithBot, ranked });
@@ -189,6 +197,15 @@ export default function LobbyPage() {
     if (checked) setPlayWithBot(false);
   }
 
+  function onGameModeChange(mode: GameMode) {
+    setGameMode(mode);
+    const option = GAME_MODES.find((m) => m.id === mode);
+    if (option && !option.rankedAllowed) {
+      setRanked(false);
+      setPlayWithBot(false);
+    }
+  }
+
   function switchMode(next: LobbyMode) {
     setMode(next);
     setError('');
@@ -243,7 +260,10 @@ export default function LobbyPage() {
             </>
           )}
           <Link to="/leaderboard" style={styles.authLink}>Leaderboard</Link>
+          <Link to="/seasons" style={styles.authLink}>Seasons</Link>
         </div>
+
+        <SeasonCountdownBanner />
 
         {authUser && <RejoinGameBanner />}
 
@@ -343,8 +363,8 @@ export default function LobbyPage() {
                     <span style={styles.openRoomCode}>{r.roomCode}</span>
                     <span style={styles.openRoomMeta}>
                       {r.spectatable
-                        ? `Live · ${r.phase ?? 'in progress'}`
-                        : r.ranked ? `Ranked · ${r.maxRounds}r` : `Casual · ${r.maxRounds}r`}
+                        ? `${gameModeLabel(r.gameMode)} · Live · ${r.phase ?? 'in progress'}`
+                        : `${gameModeLabel(r.gameMode)} · ${r.ranked ? `Ranked · ${r.maxRounds}r` : `Casual · ${r.maxRounds}r`}`}
                     </span>
                     <span style={styles.openRoomHost}>host {r.hostUsername}</span>
                     <span style={styles.openRoomCount}>
@@ -363,15 +383,21 @@ export default function LobbyPage() {
           <div style={styles.panel}>
             <p style={styles.panelTitle}>Create a room</p>
             <p style={styles.panelDesc}>You&apos;ll get a code to share with friends (2–8 players).</p>
+            <GameModePicker value={gameMode} onChange={onGameModeChange} />
             <div style={styles.badgeRow}>
               <span style={ranked ? styles.rankedBadge : styles.casualBadge}>
                 {ranked
                   ? `Ranked · ${rankedMaxRounds} rounds`
-                  : `Casual · ${CASUAL_MAX_ROUNDS} rounds`}
+                  : gameMode === 'CLAN_BATTLE'
+                    ? `Clan Battle · ${rankedMaxRounds} rounds (unranked)`
+                    : `Casual · ${CASUAL_MAX_ROUNDS} rounds`}
               </span>
               {!ranked && playWithBot && (
                 <span style={styles.botBadge}>+ BOT Vitality</span>
               )}
+              <span style={styles.policyBadge}>
+                Mode: {GAME_MODES.find((m) => m.id === gameMode)?.name ?? gameMode}
+              </span>
               <span style={styles.policyBadge}>
                 {publicRoom ? '🌐 Public' : '🔒 Private'}
               </span>
@@ -403,6 +429,7 @@ export default function LobbyPage() {
                   <input
                     type="checkbox"
                     checked={ranked}
+                    disabled={!GAME_MODES.find((m) => m.id === gameMode)?.rankedAllowed}
                     onChange={(e) => onRankedChange(e.target.checked)}
                   />
                   <span>Ranked match (login required · affects your rank · {RANKED_MIN_ROUNDS}–{RANKED_MAX_ROUNDS} rounds)</span>
@@ -422,10 +449,25 @@ export default function LobbyPage() {
                       ))}
                     </select>
                   </label>
+                ) : gameMode === 'CLAN_BATTLE' ? (
+                  <label style={styles.selectRow}>
+                    <span>Clan Battle rounds (unranked)</span>
+                    <select
+                      style={styles.select}
+                      value={rankedMaxRounds}
+                      onChange={(e) => setRankedMaxRounds(Number(e.target.value) as RankedMaxRounds)}
+                    >
+                      {RANKED_ROUND_OPTIONS.map((n) => (
+                        <option key={n} value={n}>
+                          {n} rounds{n === RANKED_MAX_ROUNDS ? ' (full)' : n === RANKED_MIN_ROUNDS ? ' (quick)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 ) : (
                   <p style={styles.casualNote}>
                     Casual rooms are always {CASUAL_MAX_ROUNDS} rounds and do not affect your rank.
-                    Check Ranked above for longer games.
+                    Check Ranked above for longer games, or pick Clan Battle for up to {RANKED_MAX_ROUNDS} rounds.
                   </p>
                 )}
                 <label style={styles.checkRow}>

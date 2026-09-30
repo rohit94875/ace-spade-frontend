@@ -1,17 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getLeaderboard } from '../services/authApi';
+import { getCurrentSeason } from '../services/seasonApi';
 import type { LeaderboardEntry } from '../types/auth';
 import { TIER_COLORS } from '../constants/tiers';
 import TierBadge from '../components/TierBadge';
+import SeasonCountdownBanner from '../components/SeasonCountdownBanner';
 
 export { TIER_COLORS };
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seasonName, setSeasonName] = useState('Current season');
 
   useEffect(() => {
+    getCurrentSeason()
+      .then((s) => setSeasonName(s.name))
+      .catch(() => undefined);
     getLeaderboard(50)
       .then(setEntries)
       .catch(() => setEntries([]))
@@ -22,7 +28,8 @@ export default function LeaderboardPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <h1 style={styles.title}>Global Ranked Leaderboard</h1>
-        <p style={styles.sub}>Season 1 · One global pool · Tier shown after 3 placement games · Casual (5 rounds) does not affect your rank</p>
+        <SeasonCountdownBanner />
+        <p style={styles.sub}>{seasonName} · Classic ranked · Tier after placement</p>
 
         {loading ? (
           <p style={styles.muted}>Loading…</p>

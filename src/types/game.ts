@@ -39,6 +39,8 @@ export interface PlayerDto {
   presenceStatus?: string;
   autoPlayCount?: number;
   ready?: boolean;
+  bidPlaced?: boolean;
+  teamId?: number | null;
   /** Ranked tier badge after placement */
   tier?: string | null;
 }
@@ -84,6 +86,7 @@ export interface PublicRoomDto {
   spectatable?: boolean;
   phase?: string;
   spectatorCount?: number;
+  gameMode?: string;
 }
 
 export interface SessionResumeResponse {
@@ -104,7 +107,7 @@ export interface SessionResumeResponse {
 export type EventType =
   | 'ROOM_UPDATED' | 'ROUND_STARTED' | 'BID_PHASE' | 'BID_PLACED'
   | 'PLAY_PHASE' | 'CARD_PLAYED' | 'TRICK_ENDED' | 'ROUND_ENDED'
-  | 'GAME_ENDED' | 'PLAYER_LEFT' | 'BOT_TAKEOVER' | 'GAME_PAUSED' | 'GAME_RESUMED'
+  | 'GAME_ENDED' | 'PLAYER_LEFT' | 'PLAYER_KICKED' | 'BOT_TAKEOVER' | 'GAME_PAUSED' | 'GAME_RESUMED'
   | 'GAME_SNAPSHOT' | 'PRESENCE_UPDATED' | 'CHAT_MESSAGE' | 'ERROR'
   | 'PLAYER_READY' | 'BOT_VOTE_UPDATED' | 'SPECTATOR_JOINED';
 
@@ -131,6 +134,10 @@ export interface RoomStateDto {
   presence?: Record<string, PlayerPresenceDto>;
   spectators?: SpectatorDto[];
   botVotes?: Record<string, string[]>;
+  gameMode?: import('../constants/gameModes').GameMode | string;
+  teamScores?: Record<string, number>;
+  team1Name?: string;
+  team2Name?: string;
 }
 
 export interface HandUpdate {
@@ -154,6 +161,10 @@ export interface RoundEndedPayload {
   cumulativeScores: Record<string, number>;
   bids: Record<string, number>;
   tricksWon: Record<string, number>;
+  teamRoundScores?: Record<string, number>;
+  teamCumulativeScores?: Record<string, number>;
+  teamBids?: Record<string, number>;
+  teamTricksWon?: Record<string, number>;
   gameOver: boolean;
   winnerUsername?: string;
   winnerScore?: number;

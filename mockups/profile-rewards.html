@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile — Ace Spade Mockup</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .profile-shell { max-width: 640px; margin: 0 auto; }
+    .profile-name { font-size: 24px; font-weight: 800; }
+    .profile-tier { font-size: 14px; font-weight: 600; color: #f1c40f; margin-bottom: 4px; }
+    .profile-email { font-size: 12px; color: var(--text-dim); }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 16px 0 0;
+    }
+    .stat-box {
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-soft);
+      text-align: center;
+    }
+    .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+    .stat-value { font-size: 18px; font-weight: 800; margin-top: 2px; }
+    .season-group { margin-bottom: 24px; }
+    .season-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .season-group-header h3 { font-size: 14px; font-weight: 700; }
+    .subsection-label { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; }
+    .empty-rewards {
+      padding: 16px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed var(--border-soft);
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .match-result-win { color: var(--accent); font-weight: 700; }
+    .match-result-loss { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← All mockups</a>
+    <div class="page-header">
+      <h1>Profile page</h1>
+      <p>Two tabs: <strong>Rewards</strong> (season cards) and <strong>Past games</strong> (match history). Toggle changes the main content below stats.</p>
+    </div>
+
+    <div class="card profile-shell">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <a href="lobby-main.html" style="font-size:13px;">← Lobby</a>
+        <a href="#" style="font-size:13px;">Leaderboard</a>
+        <a href="seasons-history.html" style="font-size:13px;">All seasons</a>
+      </div>
+
+      <div class="profile-tier">Gold 2</div>
+      <div class="profile-name">CardShark99</div>
+      <div class="profile-email">cardshark@example.com</div>
+
+      <div class="stat-grid">
+        <div class="stat-box" style="border-color:rgba(241,196,15,0.3);">
+          <div class="stat-label">MMR</div>
+          <div class="stat-value">1584</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Games</div>
+          <div class="stat-value">31</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Season</div>
+          <div class="stat-value" style="font-size:15px;">2</div>
+        </div>
+      </div>
+
+      <div class="profile-tabs">
+        <button type="button" class="profile-tab active" data-tab="rewards" onclick="switchTab('rewards')">Rewards</button>
+        <button type="button" class="profile-tab" data-tab="games" onclick="switchTab('games')">Past games</button>
+      </div>
+
+      <!-- REWARDS TAB -->
+      <div id="panel-rewards" class="tab-panel active">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+          <strong>Rank</strong> = tier playing card at season end.
+          <strong>Awards</strong> = unique badge if you were #1 in a category.
+          <a href="seasons-history.html">What each award means →</a>
+        </p>
+
+        <div class="season-group">
+          <div class="season-group-header">
+            <h3>Season 2 — September 2026 <span class="badge badge-gold" style="margin-left:6px;">Active</span></h3>
+          </div>
+          <p class="subsection-label">Your tier card (unlocks when season ends)</p>
+          <div class="symbol-grid" style="max-width:120px;">
+            <div class="symbol-item">
+              <div class="playing-card locked">
+                <div class="card-suit">?</div>
+                <div class="card-rank">Pending</div>
+                <div class="card-sub">30 Sep IST</div>
+              </div>
+              <div class="symbol-caption">Tier card</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="season-group">
+          <div class="season-group-header">
+            <h3>Season 2 <span class="badge" style="margin-left:6px;">Preview: ended</span></h3>
+          </div>
+          <p class="subsection-label">Tier card</p>
+          <div class="symbol-grid" style="max-width:120px;margin-bottom:14px;">
+            <div class="symbol-item">
+              <div class="playing-card tier-gold">
+                <div class="card-suit">♥</div>
+                <div class="card-rank">Gold Card</div>
+                <div class="card-sub">Gold 2</div>
+              </div>
+              <div class="symbol-caption">Gold Card</div>
+            </div>
+          </div>
+          <p class="subsection-label">Award badges you won (unique symbols — not rank cards)</p>
+          <div class="symbol-grid">
+            <div class="symbol-item">
+              <div class="award-badge award-badge--top-mmr"><svg viewBox="0 0 64 64" fill="none"><path d="M8 44 L14 22 L24 32 L32 14 L40 32 L50 22 L56 44 Z" fill="#f1c40f" stroke="#b8860b" stroke-width="2"/><rect x="10" y="44" width="44" height="8" rx="2" fill="#d4a017"/></svg></div>
+              <div class="symbol-caption">Top MMR</div>
+            </div>
+            <div class="symbol-item">
+              <div class="award-badge award-badge--win-streak"><svg viewBox="0 0 64 64" fill="none"><path d="M32 54 C20 44 14 34 18 24 C32 12 46 24 50 34 C44 44 32 54 Z" fill="#e67e22"/></svg></div>
+              <div class="symbol-caption">Win Streak</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="season-group">
+          <div class="season-group-header"><h3>Season 1</h3></div>
+          <div class="empty-rewards">No cards — pre-season.</div>
+        </div>
+      </div>
+
+      <!-- PAST GAMES TAB — existing MatchHistoryCard UI, unchanged -->
+      <div id="panel-games" class="tab-panel">
+        <div class="unchanged-note" style="padding:10px 12px;border-radius:8px;background:rgba(52,152,219,0.1);border:1px solid rgba(52,152,219,0.25);font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+          <strong>No UI changes.</strong> This tab shows the exact same <code>MatchHistoryCard</code> list as today&apos;s profile
+          (<code>history.slice(0, 20).map(...)</code>). We only move it behind the tab — card layout, fields, and styling stay as-is.
+        </div>
+
+        <h2 style="font-size:16px;font-weight:800;color:#fff;margin:8px 0 12px;">Match history</h2>
+
+        <article style="background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+            <div>
+              <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(116,198,157,0.2);color:#74c69d;margin-right:8px;">Victory</span>
+              <span style="font-size:12px;color:rgba(255,255,255,0.5);">Room AB12</span>
+            </div>
+            <time style="font-size:11px;color:rgba(255,255,255,0.35);">Aug 31, 2026, 7:20 PM</time>
+          </div>
+          <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px;">
+            <div><span style="display:block;font-size:10px;color:rgba(255,255,255,0.35);">Score</span><span style="font-size:15px;font-weight:700;">142</span></div>
+            <div><span style="display:block;font-size:10px;color:rgba(255,255,255,0.35);">Placement</span><span style="font-size:15px;font-weight:700;">1st of 4</span></div>
+            <div><span style="display:block;font-size:10px;color:rgba(255,255,255,0.35);">Rounds</span><span style="font-size:15px;font-weight:700;">13</span></div>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#74c69d;margin-bottom:6px;">+24.0 MMR</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.35);">vs AceHunter, TrickMaster, SpadeQueen</div>
+        </article>
+
+        <p style="font-size:12px;color:rgba(255,255,255,0.45);">… remaining cards identical to production …</p>
+      </div>
+    </div>
+
+    <div class="mockup-note">
+      <strong>Past games</strong> = move existing match history behind a tab only. Do not change <code>MatchHistoryCard</code>.
+      <strong>Rewards</strong> = new season cards section above the tabs (or only visible on Rewards tab).
+    </div>
+  </div>
+
+  <script>
+    function switchTab(name) {
+      document.querySelectorAll('.profile-tab').forEach(function (t) {
+        t.classList.toggle('active', t.getAttribute('data-tab') === name);
+      });
+      document.querySelectorAll('.tab-panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'panel-' + name);
+      });
+    }
+  </script>
+</body>
+</html>

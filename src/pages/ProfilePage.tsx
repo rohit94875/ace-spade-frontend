@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { getMyHistory, getUserHistory, getUserProfile } from '../services/authApi';
+import { getAllMySeasonRewards, getCurrentSeason, getUserSeasonRewards } from '../services/seasonApi';
 import type { MatchHistoryEntry, PublicUserProfile } from '../types/auth';
+import type { CurrentSeason, SeasonRewardsGroup } from '../types/season';
+import { isAwardBadge, isTierCard, MIN_RANKED_GAMES_FOR_REWARDS } from '../types/season';
 import MatchHistoryCard from '../components/MatchHistoryCard';
+import RewardBadge from '../components/RewardBadge';
+import { sortSeasonRewards } from '../utils/rewardSort';
 import TierBadge from '../components/TierBadge';
 import RejoinGameBanner from '../components/RejoinGameBanner';
 import { tierColor } from '../constants/tiers';
 import { RANKED_MIN_ROUNDS, RANKED_MAX_ROUNDS } from '../constants/gameLength';
+
+type ProfileTab = 'rewards' | 'history';
 
 export default function ProfilePage() {
   const { userId: userIdParam } = useParams();
@@ -18,6 +25,9 @@ export default function ProfilePage() {
   const [history, setHistory] = useState<MatchHistoryEntry[]>([]);
   const [otherProfile, setOtherProfile] = useState<PublicUserProfile | null>(null);
   const [loadingOther, setLoadingOther] = useState(false);
+  const [tab, setTab] = useState<ProfileTab>('rewards');
+  const [rewardGroups, setRewardGroups] = useState<SeasonRewardsGroup[]>([]);
+  const [currentSeason, setCurrentSeason] = useState<CurrentSeason | null>(null);
 
   const viewingUserId = userIdParam ? Number(userIdParam) : currentUser?.id;
   const isOwnProfile = !userIdParam || viewingUserId === currentUser?.id;
@@ -47,6 +57,20 @@ export default function ProfilePage() {
       })
       .finally(() => setLoadingOther(false));
   }, [isOwnProfile, viewingUserId, refreshProfile, getAccessToken]);
+
+  useEffect(() => {
+    if (!viewingUserId || Number.isNaN(viewingUserId)) return;
+    const loadRewards = isOwnProfile
+      ? getAllMySeasonRewards()
+      : getUserSeasonRewards(viewingUserId);
+    Promise.all([
+      loadRewards.catch(() => [] as SeasonRewardsGroup[]),
+      getCurrentSeason().catch(() => null),
+    ]).then(([groups, current]) => {
+      setRewardGroups(groups);
+      setCurrentSeason(current);
+    });
+  }, [isOwnProfile, viewingUserId]);
 
   if (!currentUser) return null;
 
@@ -86,6 +110,7 @@ export default function ProfilePage() {
         <div style={styles.topNav}>
           <Link to="/" style={styles.link}>← Lobby</Link>
           <Link to="/leaderboard" style={styles.link}>Leaderboard</Link>
+          <Link to="/seasons" style={styles.link}>Seasons</Link>
         </div>
 
         {isOwnProfile && <RejoinGameBanner />}
@@ -179,15 +204,130 @@ export default function ProfilePage() {
           </Link>
         </section>
 
-        <h2 style={styles.sectionTitle}>Match history</h2>
-        {history.length === 0 ? (
-          <p style={styles.muted}>No ranked games yet.</p>
-        ) : (
-          <div style={styles.historyList}>
-            {history.slice(0, 20).map((h) => (
-              <MatchHistoryCard key={h.gameRecordId} match={h} />
-            ))}
+        {isOwnProfile && (
+          <div style={styles.tabs}>
+            <button
+              type="button"
+              style={{ ...styles.tabBtn, ...(tab === 'rewards' ? styles.tabBtnActive : {}) }}
+              onClick={() => setTab('rewards')}
+            >
+              Rewards
+            </button>
+            <button
+              type="button"
+              style={{ ...styles.tabBtn, ...(tab === 'history' ? styles.tabBtnActive : {}) }}
+              onClick={() => setTab('history')}
+            >
+              Past games
+            </button>
           </div>
+        )}
+
+        {(!isOwnProfile || tab === 'rewards') && (
+          <section>
+            <h2 style={styles.sectionTitle}>Season rewards</h2>
+            <p style={styles.rewardsNote}>
+              {isOwnProfile ? (
+                <>
+                  <strong>Rank</strong> = tier playing card at season end.
+                  {' '}<strong>Awards</strong> = unique badge if you were #1 in a category.
+                  {' '}<Link to="/seasons" style={styles.inlineLink}>What each award means →</Link>
+                </>
+              ) : (
+                <>
+                  {profile.username}&apos;s tier cards and season award badges.
+                  {' '}<Link to="/seasons" style={styles.inlineLink}>Season awards →</Link>
+                </>
+              )}
+              {' '}At least {MIN_RANKED_GAMES_FOR_REWARDS} ranked classic games required.
+            </p>
+
+            {isOwnProfile && currentSeason
+              && currentSeason.status === 'ACTIVE'
+              && currentSeason.rewardsTracked
+              && profile.gamesPlayed >= MIN_RANKED_GAMES_FOR_REWARDS
+              && !rewardGroups.some((g) => g.seasonId === currentSeason.seasonId && g.rewards.length > 0) && (
+              <div style={styles.seasonGroup}>
+                <div style={styles.seasonGroupHeader}>
+                  <h3 style={styles.seasonGroupTitle}>{currentSeason.name}</h3>
+                  <span style={styles.seasonGroupBadge}>In progress</span>
+                </div>
+                <p style={styles.subsectionLabel}>Your rank card (unlocks when season ends)</p>
+                <div style={styles.symbolGrid}>
+                  <RewardBadge symbol="GOLD_CARD" pending />
+                </div>
+              </div>
+            )}
+
+            {rewardGroups.length === 0 ? (
+              <p style={styles.muted}>
+                {isOwnProfile && profile.gamesPlayed < MIN_RANKED_GAMES_FOR_REWARDS
+                  ? `Play ${MIN_RANKED_GAMES_FOR_REWARDS - profile.gamesPlayed} more ranked game${MIN_RANKED_GAMES_FOR_REWARDS - profile.gamesPlayed === 1 ? '' : 's'} to qualify for season rewards.`
+                  : isOwnProfile
+                    ? 'No season rewards yet. Finish a tracked season to earn tier cards and awards.'
+                    : 'No season rewards yet.'}
+              </p>
+            ) : (
+              rewardGroups.map((group) => {
+                const tierRewards = sortSeasonRewards(group.rewards.filter((r) => isTierCard(r.symbolType)));
+                const awardRewards = sortSeasonRewards(group.rewards.filter((r) => isAwardBadge(r.symbolType)));
+                return (
+                  <div key={group.seasonId} style={styles.seasonGroup}>
+                    <div style={styles.seasonGroupHeader}>
+                      <h3 style={styles.seasonGroupTitle}>
+                        <Link to={`/seasons/${group.seasonId}`} style={styles.seasonLink}>
+                          {group.seasonName}
+                        </Link>
+                      </h3>
+                      <span style={styles.seasonGroupBadge}>{group.status}</span>
+                    </div>
+                    {group.status === 'COMPLETED' && group.rewardsTracked && tierRewards.length === 0 && awardRewards.length > 0 && (
+                      <>
+                        <p style={styles.subsectionLabel}>Rank card</p>
+                        <p style={styles.muted}>Rank card not assigned yet for this season.</p>
+                      </>
+                    )}
+                    {tierRewards.length > 0 && (
+                      <>
+                        <p style={styles.subsectionLabel}>Rank card</p>
+                        <div style={styles.symbolGrid}>
+                          {tierRewards.map((r) => (
+                            <RewardBadge key={r.symbolType} symbol={r.symbolType} statValue={r.statValue} />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {awardRewards.length > 0 && (
+                      <>
+                        <p style={styles.subsectionLabel}>Award badges (unique symbols — not rank cards)</p>
+                        <div style={styles.symbolGrid}>
+                          {awardRewards.map((r) => (
+                            <RewardBadge key={r.symbolType} symbol={r.symbolType} statValue={r.statValue} />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })
+            )}
+            {isOwnProfile && <Link to="/seasons" style={styles.link}>View all seasons →</Link>}
+          </section>
+        )}
+
+        {(!isOwnProfile || tab === 'history') && (
+          <>
+            <h2 style={styles.sectionTitle}>Match history</h2>
+            {history.length === 0 ? (
+              <p style={styles.muted}>No ranked games yet.</p>
+            ) : (
+              <div style={styles.historyList}>
+                {history.slice(0, 20).map((h) => (
+                  <MatchHistoryCard key={h.gameRecordId} match={h} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -241,6 +381,26 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-block',
   },
   sectionTitle: { color: '#fff', fontSize: 16, margin: '8px 0 12px' },
+  tabs: { display: 'flex', gap: 8, marginBottom: 16 },
+  tabBtn: {
+    flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)',
+    background: 'transparent', color: 'rgba(255,255,255,0.6)', fontWeight: 600, cursor: 'pointer', fontSize: 13,
+  },
+  tabBtnActive: {
+    background: 'rgba(116,198,157,0.15)', borderColor: 'rgba(116,198,157,0.4)', color: '#fff',
+  },
+  rewardsNote: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, lineHeight: 1.45 },
+  inlineLink: { color: '#74c69d', textDecoration: 'none', fontWeight: 600 },
+  seasonGroup: { marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.08)' },
+  seasonGroupHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  seasonGroupTitle: { margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' },
+  seasonLink: { color: '#fff', textDecoration: 'none' },
+  seasonGroupBadge: {
+    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+    color: 'rgba(255,255,255,0.45)',
+  },
+  subsectionLabel: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 10 },
+  symbolGrid: { display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 },
   muted: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
   historyList: { display: 'flex', flexDirection: 'column', gap: 12 },
   link: { color: '#74c69d', fontSize: 14, fontWeight: 600, textDecoration: 'none' },

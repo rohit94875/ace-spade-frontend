@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ruthless Bidding — Ace Spade Mockup</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .game-board {
+      background: #0a1f14;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .phase-bar {
+      text-align: center;
+      padding: 8px;
+      margin-bottom: 16px;
+      border-radius: 8px;
+      background: rgba(241, 196, 15, 0.1);
+      border: 1px solid rgba(241, 196, 15, 0.25);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gold);
+    }
+
+    .opponents {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .opponent {
+      text-align: center;
+      padding: 12px 8px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-soft);
+    }
+
+    .opponent-name { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+    .bid-hidden {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      border: 2px dashed rgba(255,255,255,0.2);
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-dim);
+    }
+
+    .bid-hidden.placed {
+      border-style: solid;
+      border-color: var(--accent);
+      color: var(--accent);
+      font-size: 14px;
+    }
+
+    .bid-hidden.placed::after { content: '✓'; }
+
+    .trick-area {
+      min-height: 100px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .my-hand {
+      text-align: center;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(116, 198, 157, 0.06);
+      border: 1px solid rgba(116, 198, 157, 0.2);
+    }
+
+    .score-panel {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .score-cell {
+      text-align: center;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      font-size: 11px;
+    }
+
+    .score-cell .name { color: var(--text-muted); margin-bottom: 2px; }
+    .score-cell .pts { font-size: 16px; font-weight: 800; }
+    .score-cell .pts.negative { color: var(--danger); }
+
+    .reveal-overlay {
+      margin-top: 24px;
+      padding: 20px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(231,76,60,0.15), rgba(241,196,15,0.1));
+      border: 1px solid rgba(241, 196, 15, 0.3);
+      text-align: center;
+    }
+
+    .reveal-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .reveal-bids {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .reveal-bid {
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+    }
+
+    .reveal-bid .who { font-size: 11px; color: var(--text-muted); }
+    .reveal-bid .amt { font-size: 24px; font-weight: 800; color: #fff; }
+
+    .penalty-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    .penalty-table th, .penalty-table td {
+      padding: 8px;
+      text-align: left;
+      border-top: 1px solid var(--border-soft);
+    }
+
+    .penalty-table th { color: var(--text-dim); font-size: 11px; text-transform: uppercase; }
+    .neg { color: var(--danger); font-weight: 700; }
+    .pos { color: var(--accent); font-weight: 700; }
+
+    .toggle-demo { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← All mockups</a>
+    <div class="page-header">
+      <h1>Ruthless &amp; Hidden bidding</h1>
+      <p>Bids hidden during BIDDING phase (stripped from player DTO). Reveal when all bids placed. Negative scores on miss.</p>
+    </div>
+
+    <div class="card">
+      <div class="toggle-demo">
+        <button class="btn btn-primary btn-sm" onclick="showState('bidding')">During bidding</button>
+        <button class="btn btn-ghost btn-sm" onclick="showState('reveal')">Bids revealed</button>
+        <button class="btn btn-ghost btn-sm" onclick="showState('scores')">Round scores</button>
+      </div>
+
+      <div id="state-bidding">
+        <div class="game-board">
+          <div class="phase-bar">Round 5 · Bidding — bids are hidden</div>
+
+          <div class="opponents">
+            <div class="opponent">
+              <div class="opponent-name">AceHunter</div>
+              <div class="bid-hidden placed" title="Bid placed, amount hidden"></div>
+            </div>
+            <div class="opponent">
+              <div class="opponent-name">TrickMaster</div>
+              <div class="bid-hidden placed"></div>
+            </div>
+            <div class="opponent">
+              <div class="opponent-name">SpadeQueen</div>
+              <div class="bid-hidden">?</div>
+            </div>
+          </div>
+
+          <div class="trick-area">Waiting for SpadeQueen to bid…</div>
+
+          <div class="my-hand">
+            <div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:6px;">Your bid: 3</div>
+            <div style="font-size:11px;color:var(--text-muted);">Only you see your own bid. Opponents see ✓ or ?</div>
+          </div>
+
+          <div class="score-panel">
+            <div class="score-cell"><div class="name">You</div><div class="pts">142</div></div>
+            <div class="score-cell"><div class="name">AceHunter</div><div class="pts">128</div></div>
+            <div class="score-cell"><div class="name">TrickMaster</div><div class="pts negative">-22</div></div>
+            <div class="score-cell"><div class="name">SpadeQueen</div><div class="pts">95</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="state-reveal" style="display:none;">
+        <div class="reveal-overlay">
+          <div class="reveal-title">Bids revealed!</div>
+          <div class="reveal-bids">
+            <div class="reveal-bid"><div class="who">You</div><div class="amt">3</div></div>
+            <div class="reveal-bid"><div class="who">AceHunter</div><div class="amt">2</div></div>
+            <div class="reveal-bid"><div class="who">TrickMaster</div><div class="amt">4</div></div>
+            <div class="reveal-bid"><div class="who">SpadeQueen</div><div class="amt">1</div></div>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);">Triggered by <code>BIDS_REVEALED</code> WS event · Then play phase begins</p>
+        </div>
+      </div>
+
+      <div id="state-scores" style="display:none;">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">Ruthless scoring (round 5 results)</h3>
+        <table class="penalty-table">
+          <thead>
+            <tr><th>Player</th><th>Bid</th><th>Won</th><th>Delta</th><th>Round pts</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>You</td><td>3</td><td>3</td><td>0</td><td class="pos">+43</td></tr>
+            <tr><td>AceHunter</td><td>2</td><td>2</td><td>0</td><td class="pos">+32</td></tr>
+            <tr><td>TrickMaster</td><td>4</td><td>1</td><td>3</td><td class="neg">-88</td></tr>
+            <tr><td>SpadeQueen</td><td>1</td><td>0</td><td>1</td><td class="neg">-22</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:11px;color:var(--text-dim);margin-top:10px;">
+          Formula: miss penalty = -11 × 2^min(|bid - tricksWon|, 4), capped at -200/round.
+          TrickMaster: -11 × 2^3 = -88.
+        </p>
+      </div>
+    </div>
+
+    <div class="mockup-note">
+      <strong>Backend:</strong> Strip <code>bid</code> from player DTO during BIDDING for RUTHLESS_HIDDEN.
+      <code>BID_PLACED</code> event sends <code>{ playerId, bidPlaced: true }</code> only — no amount.
+    </div>
+  </div>
+
+  <script>
+    function showState(id) {
+      ['bidding', 'reveal', 'scores'].forEach(function (s) {
+        document.getElementById('state-' + s).style.display = s === id ? 'block' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>

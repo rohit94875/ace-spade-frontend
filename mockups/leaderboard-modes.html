@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leaderboard — Mode Tabs — Ace Spade Mockup</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .mode-tab {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border-soft);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .mode-tab.active {
+      background: rgba(116, 198, 157, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    table.data { width: 100%; border-collapse: collapse; }
+    table.data th { text-align: left; font-size: 11px; color: var(--text-dim); padding: 8px 4px; text-transform: uppercase; }
+    table.data td { font-size: 13px; padding: 10px 4px; border-top: 1px solid var(--border-soft); }
+
+    /* Match history card — mirrors existing MatchHistoryCard (do not redesign) */
+    .history-card {
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+    .victory-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(116, 198, 157, 0.2);
+      color: var(--accent);
+      margin-right: 8px;
+    }
+    .defeat-badge { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+    .room-label { font-size: 12px; color: var(--text-muted); }
+    .history-date { font-size: 11px; color: var(--text-dim); }
+    .stats-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .stat-block .label { display: block; font-size: 10px; color: var(--text-dim); }
+    .stat-block .val { font-size: 15px; font-weight: 700; }
+    .mmr-delta { font-size: 13px; font-weight: 700; color: var(--accent); }
+    .opponents { font-size: 11px; color: var(--text-dim); }
+    .unchanged-banner {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(52, 152, 219, 0.1);
+      border: 1px solid rgba(52, 152, 219, 0.25);
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← All mockups</a>
+    <div class="page-header">
+      <h1>Leaderboard — mode tabs</h1>
+      <p><strong>Classic</strong> and <strong>Ruthless</strong> = MMR leaderboard. <strong>Clan Battle</strong> = match history only (no ranked board).</p>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;">Leaderboard</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Season 2 — September 2026</p>
+
+      <div class="mode-tabs">
+        <button class="mode-tab active" onclick="showMode('classic')">Classic</button>
+        <button class="mode-tab" onclick="showMode('ruthless')">Ruthless</button>
+        <button class="mode-tab" onclick="showMode('clan')">Clan Battle</button>
+      </div>
+
+      <div id="panel-classic" class="panel active">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Global ranked MMR — top players this season.</p>
+        <table class="data">
+          <thead><tr><th>#</th><th>Player</th><th>Tier</th><th>MMR</th><th>Games</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td style="color:var(--accent);font-weight:600;">CardShark99</td><td class="tier-gold">Gold 1</td><td>1642</td><td>28</td></tr>
+            <tr><td>2</td><td>AceHunter</td><td class="tier-gold">Gold 2</td><td>1598</td><td>31</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="panel-ruthless" class="panel">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Separate MMR pool for Ruthless &amp; Hidden mode.</p>
+        <table class="data">
+          <thead><tr><th>#</th><th>Player</th><th>Tier</th><th>MMR</th><th>Games</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>TrickMaster</td><td class="tier-silver">Silver 1</td><td>1512</td><td>12</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="panel-clan" class="panel">
+        <div class="unchanged-banner">
+          <strong>Clan Battle tab = history only.</strong> No MMR column, no season rankings.
+          Shows recent clan matches (yours + optionally room feed). Same card layout as profile match history.
+        </div>
+        <p style="font-size:13px;font-weight:700;margin-bottom:12px;">Recent clan battles</p>
+
+        <article class="history-card">
+          <div class="history-header">
+            <div><span class="victory-badge">Victory</span><span class="room-label">Room XK7M · Clan</span></div>
+            <time class="history-date">Aug 30, 2026, 8:15 PM</time>
+          </div>
+          <div class="stats-row">
+            <div class="stat-block"><span class="label">Team score</span><span class="val">87</span></div>
+            <div class="stat-block"><span class="label">Rounds</span><span class="val">10</span></div>
+            <div class="stat-block"><span class="label">Team</span><span class="val">Spade Squad</span></div>
+          </div>
+          <p class="opponents">vs Red Devils · AceHunter, TrickMaster</p>
+        </article>
+
+        <article class="history-card">
+          <div class="history-header">
+            <div><span class="defeat-badge victory-badge">Defeat</span><span class="room-label">Room P9Q2 · Clan</span></div>
+            <time class="history-date">Aug 28, 2026, 6:40 PM</time>
+          </div>
+          <div class="stats-row">
+            <div class="stat-block"><span class="label">Team score</span><span class="val">64</span></div>
+            <div class="stat-block"><span class="label">Rounds</span><span class="val">8</span></div>
+            <div class="stat-block"><span class="label">Team</span><span class="val">Team 2</span></div>
+          </div>
+          <p class="opponents">vs Spade Squad · HostPlayer, SpadeQueen</p>
+        </article>
+        <p style="font-size:11px;color:var(--text-dim);">No rating delta — clan games are not ranked.</p>
+      </div>
+    </div>
+
+    <div class="mockup-note">
+      Profile <strong>Past games</strong> tab keeps today&apos;s <code>MatchHistoryCard</code> unchanged (classic/ruthless ranked only).
+      Clan games appear on leaderboard Clan tab + can filter in history later — same card component, optional team fields.
+    </div>
+  </div>
+
+  <script>
+    function showMode(m) {
+      document.querySelectorAll('.mode-tab').forEach(function (t, i) {
+        var modes = ['classic', 'ruthless', 'clan'];
+        t.classList.toggle('active', modes[i] === m);
+      });
+      document.querySelectorAll('.panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'panel-' + m);
+      });
+    }
+  </script>
+</body>
+</html>

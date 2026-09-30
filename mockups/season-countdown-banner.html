@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Season Countdown Banner — Ace Spade Mockup</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .demo-section { margin-bottom: 0; }
+    .demo-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+
+    .season-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+    }
+
+    .season-banner-grace {
+      background: rgba(231, 76, 60, 0.1);
+      border-color: rgba(231, 76, 60, 0.35);
+    }
+
+    .season-banner-compact {
+      padding: 8px 14px;
+      border-radius: 8px;
+    }
+
+    .banner-left { flex: 1; min-width: 180px; }
+    .banner-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 2px;
+    }
+    .banner-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .countdown {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .countdown-unit { text-align: center; min-width: 44px; }
+
+    .countdown-num {
+      display: block;
+      font-size: 22px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+      line-height: 1.1;
+    }
+
+    .countdown-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--text-dim);
+    }
+
+    .countdown-sep {
+      font-size: 18px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.25);
+      align-self: flex-start;
+      margin-top: 4px;
+    }
+
+    .banner-cta {
+      font-size: 12px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .lobby-shell {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .lobby-title {
+      font-size: 28px;
+      font-weight: 800;
+      text-align: center;
+      margin: 16px 0 4px;
+      letter-spacing: -0.5px;
+    }
+
+    .lobby-sub {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back-link" href="index.html">← All mockups</a>
+    <div class="page-header">
+      <h1>Season countdown banner</h1>
+      <p>Shown during the last <strong>4 days</strong> of the month (IST). Grace period uses different copy. Compact variant for in-game header.</p>
+    </div>
+
+    <div class="card demo-section">
+      <div class="demo-label">Lobby — last 4 days of season (ACTIVE)</div>
+      <div class="lobby-shell">
+        <div class="season-banner" id="banner-active">
+          <div class="banner-left">
+            <div class="banner-title">Season 2 ends soon</div>
+            <div class="banner-sub">September 2026 · Ends 30 Sep, 11:59 PM IST · Fresh MMR on 1 Oct</div>
+          </div>
+          <div class="countdown" id="countdown-active">
+            <div class="countdown-unit"><span class="countdown-num">03</span><span class="countdown-label">Days</span></div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-unit"><span class="countdown-num">14</span><span class="countdown-label">Hrs</span></div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-unit"><span class="countdown-num">27</span><span class="countdown-label">Min</span></div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-unit"><span class="countdown-num">08</span><span class="countdown-label">Sec</span></div>
+          </div>
+          <a class="banner-cta" href="seasons-history.html">View season rewards →</a>
+        </div>
+        <h2 class="lobby-title">♠ Ace Spade</h2>
+        <p class="lobby-sub">Trick-taking with friends</p>
+        <p style="text-align:center;color:var(--text-dim);font-size:12px;">… lobby content below …</p>
+      </div>
+    </div>
+
+    <div class="card demo-section">
+      <div class="demo-label">Grace period — 24h after month ends</div>
+      <div class="season-banner season-banner-grace">
+        <div class="banner-left">
+          <div class="banner-title" style="color:#ff7b7b;">Grace period — final games count</div>
+          <div class="banner-sub">Season 2 closed · New season starts 1 Oct, 12:00 AM IST · Play ranked now to lock in your final rank</div>
+        </div>
+        <div class="countdown">
+          <div class="countdown-unit"><span class="countdown-num">18</span><span class="countdown-label">Hrs</span></div>
+          <span class="countdown-sep">:</span>
+          <div class="countdown-unit"><span class="countdown-num">42</span><span class="countdown-label">Min</span></div>
+          <span class="countdown-sep">:</span>
+          <div class="countdown-unit"><span class="countdown-num">05</span><span class="countdown-label">Sec</span></div>
+        </div>
+        <a class="banner-cta" href="seasons-history.html">Season results →</a>
+      </div>
+    </div>
+
+    <div class="card demo-section">
+      <div class="demo-label">Leaderboard — below title</div>
+      <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;">Global Ranked Leaderboard</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Season 2 — September 2026 · Classic mode</p>
+      <div class="season-banner" style="margin-bottom:16px;">
+        <div class="banner-left">
+          <div class="banner-title">3 days left in Season 2</div>
+          <div class="banner-sub">Climb the board before MMR resets</div>
+        </div>
+        <div class="countdown">
+          <div class="countdown-unit"><span class="countdown-num">03</span><span class="countdown-label">Days</span></div>
+          <span class="countdown-sep">:</span>
+          <div class="countdown-unit"><span class="countdown-num">14</span><span class="countdown-label">Hrs</span></div>
+        </div>
+      </div>
+      <p style="color:var(--text-dim);font-size:12px;">… leaderboard table …</p>
+    </div>
+
+    <div class="card card-sm demo-section">
+      <div class="demo-label">In-game header — compact strip (ranked only)</div>
+      <div style="background:#0a1f14;border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border);">
+        <span style="font-family:var(--mono);font-weight:800;color:var(--gold);letter-spacing:1px;">ABCD</span>
+        <div class="season-banner season-banner-compact" style="flex:1;margin:0;">
+          <span style="font-size:11px;color:var(--gold);font-weight:600;">S2 ends</span>
+          <div class="countdown" style="gap:4px;">
+            <div class="countdown-unit" style="min-width:28px;"><span class="countdown-num" style="font-size:14px;">03</span><span class="countdown-label">d</span></div>
+            <span class="countdown-sep" style="font-size:12px;margin-top:0;">:</span>
+            <div class="countdown-unit" style="min-width:28px;"><span class="countdown-num" style="font-size:14px;">14</span><span class="countdown-label">h</span></div>
+          </div>
+        </div>
+        <span class="badge badge-accent">Ranked</span>
+      </div>
+    </div>
+
+    <div class="mockup-note">
+      <strong>API:</strong> <code>GET /api/seasons/current</code> returns <code>showCountdown: true</code> when 4 days or fewer remain.
+      Client ticks from <code>secondsRemaining</code>; re-sync every 5 min. Hidden when more than 4 days left.
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var end = Date.now() + (3 * 86400 + 14 * 3600 + 27 * 60 + 8) * 1000;
+      var nums = document.querySelectorAll('#countdown-active .countdown-num');
+      function pad(n) { return n < 10 ? '0' + n : '' + n; }
+      function tick() {
+        var rem = Math.max(0, end - Date.now());
+        var s = Math.floor(rem / 1000);
+        var d = Math.floor(s / 86400); s %= 86400;
+        var h = Math.floor(s / 3600); s %= 3600;
+        var m = Math.floor(s / 60); s %= 60;
+        if (nums.length >= 4) {
+          nums[0].textContent = pad(d);
+          nums[1].textContent = pad(h);
+          nums[2].textContent = pad(m);
+          nums[3].textContent = pad(s);
+        }
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
+</body>
+</html>
