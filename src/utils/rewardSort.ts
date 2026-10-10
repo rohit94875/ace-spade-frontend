@@ -3,8 +3,8 @@ import { isAwardBadge, isTierCard } from '../types/season';
 
 /** Award badges: highest prestige first (Top MMR → …). */
 const AWARD_PRESTIGE: RewardSymbolType[] = [
-  'TOP_MMR', 'MOST_WINS', 'WIN_STREAK', 'FINISHER',
-  'MOST_MATCHES', 'MOST_LOSSES', 'LOSS_STREAK', 'BID_MASTER',
+  'TOP_MMR', 'MOST_WINS', 'WIN_STREAK', 'BID_MASTER',
+  'MOST_MATCHES', 'MOST_LOSSES', 'LOSS_STREAK', 'FINISHER',
 ];
 
 /** Tier cards: highest tier first (for display only). */

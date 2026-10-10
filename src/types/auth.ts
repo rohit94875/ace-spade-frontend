@@ -1,3 +1,15 @@
+export interface ModeRating {
+  gameMode: string;
+  mmr: number;
+  tier: string | null;
+  placementComplete: boolean;
+  placementGames: number;
+  placementRequired: number;
+  gamesPlayed: number;
+  /** 1-based ladder rank; null while placing */
+  rank?: number | null;
+}
+
 export interface UserProfile {
   id: number;
   email: string;
@@ -11,6 +23,8 @@ export interface UserProfile {
   seasonId: number;
   leaveCount: number;
   nextLeavePenaltyMmr: number;
+  modeRatings?: ModeRating[];
+  admin?: boolean;
 }
 
 /** Public profile view — no email. */
@@ -58,5 +72,6 @@ export interface MatchHistoryEntry {
   placement?: number;
   winnerUsername?: string;
   winnerScore?: number;
+  gameMode?: string;
   opponents?: { username: string; score: number }[];
 }

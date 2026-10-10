@@ -3,7 +3,7 @@ import { PlayerDto } from '../types/game';
 import { RoundHistoryEntry } from '../store/gameStore';
 import type { GameMode } from '../constants/gameModes';
 import { gameModeLabel } from '../constants/gameModes';
-import { formatRoundScore, roundScoreColor, shouldHideRuthlessBids, clanTeamHit } from '../utils/scoring';
+import { formatRoundScore, roundScoreColor, clanTeamHit } from '../utils/scoring';
 
 interface Props {
   players: PlayerDto[];
@@ -20,10 +20,11 @@ interface Props {
 }
 
 export default function ScorePanel({
-  players, scores, round, maxRounds, phase, roundHistory, gameMode, teamScores, team1Name, team2Name, ruthlessHidden,
+  players, scores, round, maxRounds, phase, roundHistory, gameMode, teamScores, team1Name, team2Name,
 }: Props) {
   const [showHistory, setShowHistory] = useState(false);
   const isClan = gameMode === 'CLAN_BATTLE';
+  const isPoker = gameMode === 'POKER';
 
   const sorted = isClan
     ? [...players].sort((a, b) => (a.teamId ?? 0) - (b.teamId ?? 0) || a.username.localeCompare(b.username))
@@ -32,8 +33,10 @@ export default function ScorePanel({
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
-        <span style={styles.title}>Scoreboard</span>
-        <span style={styles.round}>Round {round}/{maxRounds}</span>
+        <span style={styles.title}>{isPoker ? 'Stacks' : 'Scoreboard'}</span>
+        <span style={styles.round}>
+          {isPoker ? `Hand ${round}` : `Round ${round}/${maxRounds}`}
+        </span>
       </div>
 
       {gameMode && gameMode !== 'CLASSIC' && (
@@ -58,9 +61,15 @@ export default function ScorePanel({
         <thead>
           <tr>
             <th style={styles.th}>Player</th>
-            <th style={styles.th}>Bid</th>
-            <th style={styles.th}>Won</th>
-            {!isClan && <th style={styles.th}>Score</th>}
+            {isPoker ? (
+              <th style={styles.th}>Chips</th>
+            ) : (
+              <>
+                <th style={styles.th}>Bid</th>
+                <th style={styles.th}>Won</th>
+                {!isClan && <th style={styles.th}>Score</th>}
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -76,17 +85,24 @@ export default function ScorePanel({
                   </span>
                 )}
                 {p.username}
+                {isPoker && p.folded ? ' (fold)' : ''}
               </td>
-              <td style={styles.td}>
-                {ruthlessHidden && shouldHideRuthlessBids(phase) && p.bid == null && p.bidPlaced
-                  ? '✓'
-                  : (p.bid ?? '–')}
-              </td>
-              <td style={styles.td}>{p.tricksWon}</td>
-              {!isClan && (
+              {isPoker ? (
                 <td style={{ ...styles.td, fontWeight: 700, color: '#74c69d' }}>
-                  {scores[p.id] ?? 0}
+                  {p.chips ?? scores[p.id] ?? 0}
                 </td>
+              ) : (
+                <>
+                  <td style={styles.td}>
+                    {p.bid ?? '–'}
+                  </td>
+                  <td style={styles.td}>{p.tricksWon}</td>
+                  {!isClan && (
+                    <td style={{ ...styles.td, fontWeight: 700, color: '#74c69d' }}>
+                      {scores[p.id] ?? 0}
+                    </td>
+                  )}
+                </>
               )}
             </tr>
           ))}

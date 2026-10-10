@@ -8,7 +8,50 @@ export type Rank =
   | 'TWO' | 'THREE' | 'FOUR' | 'FIVE' | 'SIX' | 'SEVEN' | 'EIGHT'
   | 'NINE' | 'TEN' | 'JACK' | 'QUEEN' | 'KING' | 'ACE';
 export type GamePhase =
-  | 'LOBBY' | 'BIDDING' | 'PLAYING' | 'TRICK_RESOLVE' | 'ROUND_END' | 'GAME_END';
+  | 'LOBBY' | 'BIDDING' | 'PLAYING' | 'TRICK_RESOLVE' | 'ROUND_END' | 'GAME_END'
+  | 'POKER_HAND';
+
+export type PokerStreet = 'PREFLOP' | 'FLOP' | 'TURN' | 'RIVER' | 'SHOWDOWN';
+export type PokerAction = 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE';
+
+export interface PokerSeat {
+  id: string;
+  username: string;
+  chips: number;
+  betThisStreet: number;
+  totalBetThisHand: number;
+  folded: boolean;
+  allIn: boolean;
+  inHand: boolean;
+  isDealer: boolean;
+  isSmallBlind?: boolean;
+  isBigBlind?: boolean;
+  holeCards?: Card[];
+  holeCardCount?: number;
+  legalActions?: PokerAction[];
+}
+
+export interface PokerTableState {
+  street: PokerStreet | null;
+  communityCards: Card[];
+  pot: number;
+  currentBet: number;
+  betUnit: number;
+  smallBlind: number;
+  bigBlind: number;
+  dealerPlayerId: string;
+  smallBlindPlayerId?: string | null;
+  bigBlindPlayerId?: string | null;
+  smallBlindUsername?: string | null;
+  bigBlindUsername?: string | null;
+  handNumber: number;
+  lastAction: string | null;
+  raisesThisStreet: number;
+  currentTurnPlayerId: string | null;
+  seats: PokerSeat[];
+  legalActions?: PokerAction[];
+  toCall?: number;
+}
 
 export interface Card {
   suit: Suit;
@@ -43,6 +86,10 @@ export interface PlayerDto {
   teamId?: number | null;
   /** Ranked tier badge after placement */
   tier?: string | null;
+  chips?: number | null;
+  betThisStreet?: number | null;
+  folded?: boolean;
+  allIn?: boolean;
 }
 
 export type PresenceStatus = 'ONLINE' | 'AWAY' | 'DISCONNECTED' | 'GRACE' | 'PAUSED';
@@ -109,7 +156,8 @@ export type EventType =
   | 'PLAY_PHASE' | 'CARD_PLAYED' | 'TRICK_ENDED' | 'ROUND_ENDED'
   | 'GAME_ENDED' | 'PLAYER_LEFT' | 'PLAYER_KICKED' | 'BOT_TAKEOVER' | 'GAME_PAUSED' | 'GAME_RESUMED'
   | 'GAME_SNAPSHOT' | 'PRESENCE_UPDATED' | 'CHAT_MESSAGE' | 'ERROR'
-  | 'PLAYER_READY' | 'BOT_VOTE_UPDATED' | 'SPECTATOR_JOINED';
+  | 'PLAYER_READY' | 'BOT_VOTE_UPDATED' | 'SPECTATOR_JOINED'
+  | 'POKER_UPDATE' | 'POKER_HAND_ENDED';
 
 export interface GameEvent {
   type: EventType;
@@ -138,6 +186,7 @@ export interface RoomStateDto {
   teamScores?: Record<string, number>;
   team1Name?: string;
   team2Name?: string;
+  poker?: PokerTableState | null;
 }
 
 export interface HandUpdate {

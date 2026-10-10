@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   getCurrentSeason, getSeasonDetail, getSeasonLeaderboard, listSeasons,
@@ -13,6 +13,9 @@ import TierBadge from '../components/TierBadge';
 import { formatSeasonRange, seasonStatusColor, seasonStatusLabel } from '../utils/seasonFormat';
 import { sortAwardWinners } from '../utils/rewardSort';
 import { REWARD_LABELS } from '../types/season';
+import { gameModeLabel } from '../constants/gameModes';
+
+type RankedModeTab = 'CLASSIC' | 'RUTHLESS_HIDDEN';
 
 export default function SeasonsPage() {
   const { id } = useParams();
@@ -21,6 +24,7 @@ export default function SeasonsPage() {
   const [current, setCurrent] = useState<CurrentSeason | null>(null);
   const [detail, setDetail] = useState<SeasonDetail | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [lbMode, setLbMode] = useState<RankedModeTab>('CLASSIC');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,20 +45,30 @@ export default function SeasonsPage() {
       return;
     }
     setLoading(true);
-    Promise.all([
-      getSeasonDetail(seasonId),
-      getSeasonLeaderboard(seasonId, 10),
-    ])
-      .then(([d, lb]) => {
-        setDetail(d);
-        setLeaderboard(lb);
-      })
-      .catch(() => {
-        setDetail(null);
-        setLeaderboard([]);
-      })
+    getSeasonDetail(seasonId)
+      .then(setDetail)
+      .catch(() => setDetail(null))
       .finally(() => setLoading(false));
   }, [seasonId]);
+
+  useEffect(() => {
+    if (!seasonId || Number.isNaN(seasonId) || !detail || detail.status !== 'ACTIVE') {
+      setLeaderboard([]);
+      return;
+    }
+    getSeasonLeaderboard(seasonId, 10, lbMode)
+      .then(setLeaderboard)
+      .catch(() => setLeaderboard([]));
+  }, [seasonId, detail?.status, lbMode]);
+
+  const awardsByMode = useMemo(() => {
+    if (!detail) return { CLASSIC: [], RUTHLESS_HIDDEN: [] };
+    const classic = detail.awardWinners.filter(
+      (w) => !w.gameMode || w.gameMode === 'CLASSIC',
+    );
+    const ruthless = detail.awardWinners.filter((w) => w.gameMode === 'RUTHLESS_HIDDEN');
+    return { CLASSIC: classic, RUTHLESS_HIDDEN: ruthless };
+  }, [detail]);
 
   if (seasonId && !Number.isNaN(seasonId)) {
     return (
@@ -85,72 +99,96 @@ export default function SeasonsPage() {
 
               {detail.rewardsTracked && (
                 <div style={styles.infoBox}>
-                  Tier cards unlock at season end after {MIN_RANKED_GAMES_FOR_REWARDS}+ ranked classic games.
-                  Award badges go to #1 in each category (same minimum).
+                  Tier cards unlock at season end after {MIN_RANKED_GAMES_FOR_REWARDS}+ ranked games
+                  per mode (Classic and Ruthless have separate ladders and awards).
                 </div>
               )}
 
-              {detail.status === 'ACTIVE' && leaderboard.length > 0 && (
+              {detail.status === 'ACTIVE' && (
                 <section style={styles.section}>
-                  <h2 style={styles.sectionTitle}>Classic leaderboard</h2>
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={styles.th}>#</th>
-                        <th style={styles.th}>Player</th>
-                        <th style={styles.th}>Tier</th>
-                        <th style={styles.th}>MMR</th>
-                        <th style={styles.th}>Games</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaderboard.map((e) => (
-                        <tr key={e.userId}>
-                          <td style={styles.td}>{e.rank}</td>
-                          <td style={{ ...styles.td, color: '#74c69d', fontWeight: 600 }}>
-                            <Link to={`/profile/${e.userId}`} style={styles.playerLink}>{e.username}</Link>
-                          </td>
-                          <td style={styles.td}>
-                            <TierBadge tier={e.tier} size="sm" />
-                          </td>
-                          <td style={styles.td}>{e.mmr.toFixed(1)}</td>
-                          <td style={styles.td}>{e.gamesPlayed}</td>
+                  <h2 style={styles.sectionTitle}>Season leaderboard</h2>
+                  <div style={styles.tabs}>
+                    {(['CLASSIC', 'RUTHLESS_HIDDEN'] as RankedModeTab[]).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        style={{ ...styles.tab, ...(lbMode === mode ? styles.tabActive : {}) }}
+                        onClick={() => setLbMode(mode)}
+                      >
+                        {gameModeLabel(mode)}
+                      </button>
+                    ))}
+                  </div>
+                  {leaderboard.length === 0 ? (
+                    <p style={styles.muted}>No {gameModeLabel(lbMode)} ranked players yet.</p>
+                  ) : (
+                    <table style={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>#</th>
+                          <th style={styles.th}>Player</th>
+                          <th style={styles.th}>Tier</th>
+                          <th style={styles.th}>MMR</th>
+                          <th style={styles.th}>Games</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {leaderboard.map((e) => (
+                          <tr key={`${lbMode}-${e.userId}`}>
+                            <td style={styles.td}>{e.rank}</td>
+                            <td style={{ ...styles.td, color: '#74c69d', fontWeight: 600 }}>
+                              <Link to={`/profile/${e.userId}`} style={styles.playerLink}>{e.username}</Link>
+                            </td>
+                            <td style={styles.td}>
+                              <TierBadge tier={e.tier} size="sm" />
+                            </td>
+                            <td style={styles.td}>{e.mmr.toFixed(1)}</td>
+                            <td style={styles.td}>{e.gamesPlayed}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                   <Link to="/leaderboard" style={styles.link}>Full leaderboard →</Link>
                 </section>
               )}
 
               <section style={styles.section}>
                 <h2 style={styles.sectionTitle}>Award winners</h2>
-                {detail.awardWinners.length > 0 ? (
-                  <div style={styles.winnerList}>
-                    {sortAwardWinners(detail.awardWinners).map((w) => (
-                      <div key={`${w.symbolType}-${w.userId}`} style={styles.winnerRow}>
-                        <AwardIcon symbol={w.symbolType} size={40} />
-                        <Link to={`/profile/${w.userId}`} style={styles.winnerName}>{w.username}</Link>
-                        <span style={styles.winnerStat}>
-                          {REWARD_LABELS[w.symbolType]}
-                          {w.statValue != null && ` · ${w.symbolType === 'TOP_MMR' ? w.statValue.toFixed(0) : Math.round(w.statValue)}`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={styles.muted}>
-                    {detail.rewardsTracked && detail.status !== 'COMPLETED'
-                      ? 'Awards are calculated when the season completes.'
-                      : 'No awards recorded for this season.'}
-                  </p>
-                )}
+                {(['CLASSIC', 'RUTHLESS_HIDDEN'] as RankedModeTab[]).map((mode) => {
+                  const winners = sortAwardWinners(awardsByMode[mode]);
+                  return (
+                    <div key={mode} style={styles.awardBlock}>
+                      <h3 style={styles.awardModeTitle}>{gameModeLabel(mode)}</h3>
+                      {winners.length > 0 ? (
+                        <div style={styles.winnerList}>
+                          {winners.map((w) => (
+                            <div key={`${mode}-${w.symbolType}-${w.userId}`} style={styles.winnerRow}>
+                              <AwardIcon symbol={w.symbolType} size={40} />
+                              <Link to={`/profile/${w.userId}`} style={styles.winnerName}>{w.username}</Link>
+                              <span style={styles.winnerStat}>
+                                {REWARD_LABELS[w.symbolType]}
+                                {w.statValue != null && ` · ${w.symbolType === 'TOP_MMR' ? w.statValue.toFixed(0) : Math.round(w.statValue)}`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={styles.muted}>
+                          {detail.rewardsTracked && detail.status !== 'COMPLETED'
+                            ? 'Awards are calculated when the season completes.'
+                            : 'No awards for this mode.'}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </section>
 
               <section style={styles.section}>
                 <h2 style={styles.sectionTitle}>Tier cards</h2>
                 <p style={styles.mutedSmall}>
-                  Everyone with {MIN_RANKED_GAMES_FOR_REWARDS}+ ranked games earns a card based on final MMR.
+                  Everyone with {MIN_RANKED_GAMES_FOR_REWARDS}+ ranked games in a mode earns a card based on that mode&apos;s final MMR.
                 </p>
                 <div style={styles.tierPreview}>
                   {(['SAND_CARD', 'BRONZE_CARD', 'SILVER_CARD', 'GOLD_CARD', 'PLATINUM_CARD', 'DIAMOND_CARD', 'ACE_CARD'] as const).map((sym) => (
@@ -176,7 +214,8 @@ export default function SeasonsPage() {
         <h1 style={styles.title}>Seasons</h1>
         <SeasonCountdownBanner />
         <p style={styles.sub}>
-          Monthly ranked seasons (IST). Play {MIN_RANKED_GAMES_FOR_REWARDS}+ ranked classic games to earn tier cards and compete for awards.
+          Monthly ranked seasons (IST). Play {MIN_RANKED_GAMES_FOR_REWARDS}+ ranked games per mode
+          (Classic / Ruthless) to earn tier cards and compete for awards.
         </p>
 
         {seasons.length === 0 ? (
@@ -250,6 +289,17 @@ const styles: Record<string, React.CSSProperties> = {
   },
   section: { marginBottom: 28 },
   sectionTitle: { color: '#fff', fontSize: 16, fontWeight: 800, margin: '0 0 12px' },
+  tabs: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 },
+  tab: {
+    padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+    color: 'rgba(255,255,255,0.55)', cursor: 'pointer',
+  },
+  tabActive: {
+    background: 'rgba(116,198,157,0.15)', borderColor: '#74c69d', color: '#74c69d',
+  },
+  awardBlock: { marginBottom: 18 },
+  awardModeTitle: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: 700, margin: '0 0 10px' },
   table: { width: '100%', borderCollapse: 'collapse', marginBottom: 12 },
   th: { fontSize: 11, color: 'rgba(255,255,255,0.45)', textAlign: 'left', paddingBottom: 8, fontWeight: 600, textTransform: 'uppercase' },
   td: { fontSize: 13, color: 'rgba(255,255,255,0.85)', padding: '8px 4px', borderTop: '1px solid rgba(255,255,255,0.06)' },

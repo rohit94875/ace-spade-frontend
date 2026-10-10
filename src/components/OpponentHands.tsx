@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { PlayerDto } from '../types/game';
-import { shouldHideRuthlessBids } from '../utils/scoring';
 import CardComponent from './CardComponent';
 import { tierCardFaceColor } from '../constants/tiers';
 import TierBadge from './TierBadge';
@@ -18,10 +17,9 @@ interface Props {
 const PLACEHOLDER_CARD = { suit: 'SPADES' as const, rank: 'ACE' as const, deckIndex: 0, playOrder: 0 };
 
 export default function OpponentHands({
-  players, myPlayerId, currentTurnPlayerId, scores, ruthlessHidden, phase, clanMode,
+  players, myPlayerId, currentTurnPlayerId, scores, clanMode,
 }: Props) {
   const opponents = players.filter((p) => p.id !== myPlayerId);
-  const hideBids = ruthlessHidden && shouldHideRuthlessBids(phase);
 
   return (
     <div style={styles.grid}>
@@ -51,9 +49,7 @@ export default function OpponentHands({
             <div style={styles.stats}>
               {!clanMode && <span title="Score">🏆 {score}</span>}
               <span title="Bid">
-                🎯 {hideBids
-                  ? (player.bidPlaced ? '✓' : '?')
-                  : (player.bid ?? '–')}
+                🎯 {player.bid ?? '–'}
               </span>
               {player.teamId != null && (
                 <span title="Team" style={{ color: player.teamId === 1 ? '#3498db' : '#e74c3c' }}>

@@ -5,11 +5,12 @@ interface Props {
   username: string;
   isHost: boolean;
   canPause: boolean;
+  canLeave: boolean;
   onPause: () => void;
   onLeave: () => void;
 }
 
-export default function GameMenu({ username, isHost, canPause, onPause, onLeave }: Props) {
+export default function GameMenu({ username, isHost, canPause, canLeave, onPause, onLeave }: Props) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const incognitoMode = useDisplayStore((s) => s.incognitoMode);
@@ -72,14 +73,18 @@ export default function GameMenu({ username, isHost, canPause, onPause, onLeave 
               ⏸ Pause game
             </button>
           )}
-          <div style={styles.divider} />
-          <button
-            type="button"
-            style={{ ...styles.item, ...styles.danger }}
-            onClick={() => { onLeave(); setOpen(false); }}
-          >
-            Leave room
-          </button>
+          {canLeave && (
+            <>
+              <div style={styles.divider} />
+              <button
+                type="button"
+                style={{ ...styles.item, ...styles.danger }}
+                onClick={() => { onLeave(); setOpen(false); }}
+              >
+                Leave room
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

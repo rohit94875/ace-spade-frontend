@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [adminCode, setAdminCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +18,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
     try {
-      await register(email.trim(), password, username.trim());
+      await register(email.trim(), password, username.trim(), adminCode.trim());
       navigate('/');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -34,6 +35,7 @@ export default function RegisterPage() {
         <input style={styles.input} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input style={styles.input} placeholder="Username (3–20 chars)" value={username} maxLength={20} onChange={(e) => setUsername(e.target.value)} required />
         <input style={styles.input} type="password" placeholder="Password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+        <input style={styles.input} placeholder="Registration code" value={adminCode} onChange={(e) => setAdminCode(e.target.value)} required autoComplete="off" />
         {error && <p style={styles.error}>{error}</p>}
         <button style={styles.btn} type="submit" disabled={loading}>{loading ? 'Creating…' : 'Register'}</button>
         <p style={styles.linkRow}>Already have an account? <Link to="/login" style={styles.link}>Sign in</Link></p>
