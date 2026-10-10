@@ -21,6 +21,8 @@ interface Props {
   players: PlayerDto[];
   onLeave: () => void;
   onPause: () => void;
+  /** Leave is only offered when spectating — not during active play. */
+  canLeave: boolean;
 }
 
 function buildStatus(props: Props): { text: string; highlight: boolean } {
@@ -46,7 +48,7 @@ function buildStatus(props: Props): { text: string; highlight: boolean } {
 
 export default function GameHeader(props: Props) {
   const isMobile = useMediaQuery('(max-width: 640px)');
-  const { roomCode, round, maxRounds, username, tier, isHost, canPause, onLeave, onPause } = props;
+  const { roomCode, round, maxRounds, username, tier, isHost, canPause, canLeave, onLeave, onPause } = props;
   const status = buildStatus(props);
 
   if (isMobile) {
@@ -72,6 +74,7 @@ export default function GameHeader(props: Props) {
             username={username}
             isHost={isHost}
             canPause={canPause}
+            canLeave={canLeave}
             onPause={onPause}
             onLeave={onLeave}
           />
@@ -103,7 +106,9 @@ export default function GameHeader(props: Props) {
             ⏸ Pause
           </button>
         )}
-        <button style={styles.leaveBtn} type="button" onClick={onLeave}>Leave</button>
+        {canLeave && (
+          <button style={styles.leaveBtn} type="button" onClick={onLeave}>Leave</button>
+        )}
       </div>
     </header>
   );

@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import RankCollectionPage from './pages/RankCollectionPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import AdminPage from './pages/AdminPage';
 import SeasonsPage from './pages/SeasonsPage';
 import { useGameStore } from './store/gameStore';
 import { useAuthStore } from './store/authStore';
@@ -110,6 +111,14 @@ export default function App() {
           element={(
             <RequireAuth>
               <ProfilePage />
+            </RequireAuth>
+          )}
+        />
+        <Route
+          path="/admin"
+          element={(
+            <RequireAuth>
+              <AdminPage />
             </RequireAuth>
           )}
         />

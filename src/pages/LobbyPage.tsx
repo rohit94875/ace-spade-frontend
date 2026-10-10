@@ -263,6 +263,7 @@ export default function LobbyPage() {
           )}
           <div style={styles.authLinks}>
             {authUser && <Link to="/profile" style={styles.authLink}>Profile</Link>}
+            {authUser?.admin && <Link to="/admin" style={styles.authLink}>Admin</Link>}
             <Link to="/leaderboard" style={styles.authLink}>Leaderboard</Link>
             <Link to="/seasons" style={styles.authLink}>Seasons</Link>
           </div>

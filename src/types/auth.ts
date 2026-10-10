@@ -24,6 +24,7 @@ export interface UserProfile {
   leaveCount: number;
   nextLeavePenaltyMmr: number;
   modeRatings?: ModeRating[];
+  admin?: boolean;
 }
 
 /** Public profile view — no email. */

@@ -142,7 +142,7 @@ export default function LeaderboardPage() {
                 <tr key={e.userId}>
                   <td style={styles.td}>{e.rank}</td>
                   <td style={styles.td}>
-                    <Link to={`/u/${e.username}`} style={styles.playerLink}>{e.username}</Link>
+                    <Link to={`/profile/${e.userId}`} style={styles.playerLink}>{e.username}</Link>
                   </td>
                   <td style={styles.td}><TierBadge tier={e.tier} size="sm" /></td>
                   <td style={styles.td}>{Math.round(e.mmr)}</td>

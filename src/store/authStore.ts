@@ -12,7 +12,7 @@ interface AuthStore {
   initialized: boolean;
   init: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, username: string) => Promise<void>;
+  register: (email: string, password: string, username: string, adminCode: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
@@ -90,8 +90,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     });
   },
 
-  register: async (email, password, username) => {
-    const res = await authApi.register(email, password, username);
+  register: async (email, password, username, adminCode) => {
+    const res = await authApi.register(email, password, username, adminCode);
     const stored: StoredAuth = {
       accessToken: res.accessToken,
       refreshToken: res.refreshToken,
