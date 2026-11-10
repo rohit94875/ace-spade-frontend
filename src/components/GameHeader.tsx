@@ -21,7 +21,7 @@ interface Props {
   players: PlayerDto[];
   onLeave: () => void;
   onPause: () => void;
-  /** Leave is only offered when spectating — not during active play. */
+  /** Leave is offered to spectators and to players waiting in the lobby — not during active play. */
   canLeave: boolean;
 }
 
