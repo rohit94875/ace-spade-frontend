@@ -107,12 +107,20 @@ export interface PlayerPresenceDto {
   turnTimeoutAt?: number | null;
 }
 
+/** Server-built quote of the message a chat message replies to. */
+export interface ChatReplyDto {
+  id: string;
+  username: string;
+  text: string;
+}
+
 export interface ChatMessageDto {
   id: string;
   playerId: string;
   username: string;
   text: string;
   mentions?: string[];
+  replyTo?: ChatReplyDto;
   sentAt: number;
 }
 

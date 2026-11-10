@@ -118,6 +118,8 @@ export function sendResume(roomCode: string) {
 export interface ChatSendPayload {
   text: string;
   mentions?: string[];
+  /** Id of the chat message being replied to; the server builds the quote. */
+  replyToId?: string;
 }
 
 export function sendChat(roomCode: string, payload: ChatSendPayload | string) {
