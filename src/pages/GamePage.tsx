@@ -300,7 +300,7 @@ export default function GamePage() {
         isMyTurn={isMyTurn}
         currentTurnPlayerId={currentTurnPlayerId}
         players={players}
-        canLeave={isSpectator}
+        canLeave={isSpectator || phase === 'LOBBY'}
         onLeave={handleLeave}
         onPause={() => sendPause(roomCode)}
       />
