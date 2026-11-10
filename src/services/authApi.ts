@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type {
-  AuthResponse, LeaderboardEntry, MatchHistoryEntry, PublicUserProfile, UserProfile,
+  AllTimeEntry, AuthResponse, LeaderboardEntry, MatchHistoryEntry, PublicUserProfile, UserProfile,
 } from '../types/auth';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -35,6 +35,12 @@ export const getLeaderboard = (
   gameMode: 'CLASSIC' | 'RUTHLESS_HIDDEN' = 'CLASSIC',
 ): Promise<LeaderboardEntry[]> =>
   api.get('/rankings/leaderboard', { params: { limit, gameMode } }).then((r) => r.data);
+
+export const getAllTimeLeaderboard = (
+  sort: 'wins' | 'winPct' = 'wins',
+  limit = 50,
+): Promise<AllTimeEntry[]> =>
+  api.get('/rankings/all-time', { params: { sort, limit } }).then((r) => r.data);
 
 export const getMyHistory = (accessToken: string): Promise<MatchHistoryEntry[]> =>
   api.get('/rankings/history/me', {

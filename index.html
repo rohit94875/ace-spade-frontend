@@ -7,6 +7,12 @@
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a4a2e; color: #f0f0f0; }
+      @keyframes all-time-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(241,196,15,0.55); background: rgba(241,196,15,0.14); }
+        50% { box-shadow: 0 0 0 6px rgba(241,196,15,0); background: rgba(241,196,15,0.3); }
+      }
+      .all-time-pill { animation: all-time-pulse 2.5s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) { .all-time-pill { animation: none; } }
     </style>
   </head>
   <body>

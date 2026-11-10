@@ -266,6 +266,7 @@ export default function LobbyPage() {
             {authUser?.admin && <Link to="/admin" style={styles.authLink}>Admin</Link>}
             <Link to="/leaderboard" style={styles.authLink}>Leaderboard</Link>
             <Link to="/seasons" style={styles.authLink}>Seasons</Link>
+            <Link to="/all-time" className="all-time-pill" style={styles.allTimePill}>All-time</Link>
           </div>
         </div>
 
@@ -586,6 +587,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
   },
   authLink: { color: '#74c69d', textDecoration: 'none', fontWeight: 600 },
+  allTimePill: {
+    color: '#f1c40f', textDecoration: 'none', fontWeight: 600,
+    padding: '2px 10px', borderRadius: 999,
+    border: '1px solid rgba(241,196,15,0.6)', background: 'rgba(241,196,15,0.14)',
+  },
   input: {
     padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
     background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: 15,
