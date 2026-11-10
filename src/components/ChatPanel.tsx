@@ -4,6 +4,9 @@ import { sendChat } from '../services/websocket';
 import { CHAT_EMOJIS } from '../constants/chatEmojis';
 import { extractMentions, mentionQueryAtCursor, renderMentionParts } from '../utils/chatMentions';
 
+/** Within this distance of the bottom counts as "reading the latest messages". */
+const BOTTOM_THRESHOLD_PX = 40;
+
 interface Props {
   roomCode: string;
   messages: ChatMessageDto[];
@@ -22,12 +25,52 @@ export default function ChatPanel({
   const [text, setText] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [mentionIdx, setMentionIdx] = useState(0);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [unread, setUnread] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const atBottomRef = useRef(true);
+  const prevLenRef = useRef(0);
+
+  function scrollToBottom(smooth: boolean) {
+    const list = listRef.current;
+    if (!list) return;
+    // Scroll only the chat list (not ancestors, unlike scrollIntoView).
+    list.scrollTo({ top: list.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  function handleListScroll() {
+    const list = listRef.current;
+    if (!list) return;
+    const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight <= BOTTOM_THRESHOLD_PX;
+    atBottomRef.current = nearBottom;
+    if (nearBottom) setUnread(0);
+  }
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]);
+    const prev = prevLenRef.current;
+    prevLenRef.current = messages.length;
+    if (prev === 0) {
+      // Initial load or resume: start at the latest message.
+      scrollToBottom(false);
+      return;
+    }
+    const added = messages.length - prev;
+    if (added <= 0) return;
+    const last = messages[messages.length - 1];
+    if (atBottomRef.current || last.playerId === myPlayerId) {
+      atBottomRef.current = true;
+      setUnread(0);
+      scrollToBottom(true);
+    } else {
+      setUnread((n) => n + added);
+    }
+  }, [messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function jumpToLatest() {
+    atBottomRef.current = true;
+    setUnread(0);
+    scrollToBottom(true);
+  }
 
   const mentionQuery = useMemo(() => {
     const cursor = inputRef.current?.selectionStart ?? text.length;
@@ -130,7 +173,7 @@ export default function ChatPanel({
   return (
     <div style={styles.panel}>
       <div style={styles.header}>Room chat</div>
-      <div style={styles.messages}>
+      <div ref={listRef} style={styles.messages} onScroll={handleListScroll}>
         {messages.length === 0 && (
           <p style={styles.empty}>Say hello to the table… use @ to mention someone</p>
         )}
@@ -146,8 +189,13 @@ export default function ChatPanel({
             {renderBody(m)}
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
+
+      {unread > 0 && (
+        <button type="button" style={styles.newMsgPill} onClick={jumpToLatest}>
+          {unread === 1 ? 'New message' : `${unread} new messages`} ↓
+        </button>
+      )}
 
       {emojiOpen && (
         <div style={styles.emojiPicker}>
@@ -288,6 +336,22 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   mentionItemOn: { background: 'rgba(116,198,157,0.2)' },
+  newMsgPill: {
+    position: 'absolute',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    bottom: 56,
+    padding: '5px 12px',
+    borderRadius: 999,
+    border: '1px solid rgba(116,198,157,0.5)',
+    background: '#1b4332',
+    color: '#d8f3dc',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    zIndex: 4,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+  },
   form: { display: 'flex', gap: 4, padding: 8, borderTop: '1px solid rgba(255,255,255,0.08)', alignItems: 'center' },
   iconBtn: {
     padding: '6px 8px',
