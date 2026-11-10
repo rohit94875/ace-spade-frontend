@@ -73,5 +73,11 @@ export interface MatchHistoryEntry {
   winnerUsername?: string;
   winnerScore?: number;
   gameMode?: string;
-  opponents?: { username: string; score: number }[];
+  opponents?: {
+    username: string;
+    score: number;
+    ratingBefore?: number | null;
+    ratingAfter?: number | null;
+    ratingDelta?: number | null;
+  }[];
 }
