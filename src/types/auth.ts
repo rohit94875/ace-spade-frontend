@@ -57,6 +57,15 @@ export interface LeaderboardEntry {
   gamesPlayed: number;
 }
 
+export interface AllTimeEntry {
+  rank: number;
+  userId: number;
+  username: string;
+  games: number;
+  wins: number;
+  winPct: number;
+}
+
 export interface MatchHistoryEntry {
   gameRecordId: number;
   roomCode: string;

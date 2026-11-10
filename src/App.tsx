@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import RankCollectionPage from './pages/RankCollectionPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import AllTimeLeaderboardPage from './pages/AllTimeLeaderboardPage';
 import AdminPage from './pages/AdminPage';
 import SeasonsPage from './pages/SeasonsPage';
 import { useGameStore } from './store/gameStore';
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/all-time" element={<AllTimeLeaderboardPage />} />
         <Route path="/seasons" element={<SeasonsPage />} />
         <Route path="/seasons/:id" element={<SeasonsPage />} />
         <Route
