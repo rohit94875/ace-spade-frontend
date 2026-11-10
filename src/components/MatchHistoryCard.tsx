@@ -95,6 +95,11 @@ export default function MatchHistoryCard({ match }: { match: MatchHistoryEntry }
             {opponents.map((o) => (
               <span key={o.username} style={styles.chip}>
                 {o.username} · {o.score}
+                {o.ratingDelta != null && (
+                  <span style={{ ...styles.chipDelta, color: o.ratingDelta >= 0 ? '#74c69d' : '#e74c3c' }}>
+                    {o.ratingDelta >= 0 ? '+' : '−'}{Math.abs(o.ratingDelta).toFixed(1)} MMR
+                  </span>
+                )}
               </span>
             ))}
           </div>
@@ -147,6 +152,7 @@ const styles: Record<string, React.CSSProperties> = {
   opponents: { display: 'flex', flexDirection: 'column', gap: 6 },
   opponentsLabel: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' },
   opponentChips: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  chipDelta: { marginLeft: 6, fontWeight: 700 },
   chip: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.75)',
