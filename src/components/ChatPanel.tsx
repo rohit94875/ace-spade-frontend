@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { ChatMessageDto } from '../types/game';
 import { sendChat } from '../services/websocket';
 import { CHAT_EMOJIS } from '../constants/chatEmojis';
@@ -6,6 +8,8 @@ import { extractMentions, mentionQueryAtCursor, renderMentionParts } from '../ut
 
 /** Within this distance of the bottom counts as "reading the latest messages". */
 const BOTTOM_THRESHOLD_PX = 40;
+/** Share of the chat panel that must be on screen for its messages to count as seen. */
+const VISIBLE_RATIO = 0.6;
 
 interface Props {
   roomCode: string;
@@ -26,10 +30,19 @@ export default function ChatPanel({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [mentionIdx, setMentionIdx] = useState(0);
   const [unread, setUnread] = useState(0);
+  const isMobile = useMediaQuery('(max-width: 640px)');
+  const panelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** Chat list is scrolled to (near) its bottom. */
   const atBottomRef = useRef(true);
-  const prevLenRef = useRef(0);
+  /** Chat panel is mostly on screen (page scroll, not list scroll). */
+  const visibleRef = useRef(true);
+  const initializedRef = useRef(false);
+  /** Id of the newest message already processed (length stops changing at the 100-message cap). */
+  const lastSeenIdRef = useRef<string | null>(null);
+
+  const lastId = messages.length > 0 ? messages[messages.length - 1].id : null;
 
   function scrollToBottom(smooth: boolean) {
     const list = listRef.current;
@@ -38,39 +51,81 @@ export default function ChatPanel({
     list.scrollTo({ top: list.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   }
 
+  /** Messages count as read only while the panel is on screen and the list is at the bottom. */
+  function clearUnreadIfReading() {
+    if (visibleRef.current && atBottomRef.current) setUnread(0);
+  }
+
   function handleListScroll() {
     const list = listRef.current;
     if (!list) return;
-    const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight <= BOTTOM_THRESHOLD_PX;
-    atBottomRef.current = nearBottom;
-    if (nearBottom) setUnread(0);
+    atBottomRef.current =
+      list.scrollHeight - list.scrollTop - list.clientHeight <= BOTTOM_THRESHOLD_PX;
+    clearUnreadIfReading();
   }
 
   useEffect(() => {
-    const prev = prevLenRef.current;
-    prevLenRef.current = messages.length;
-    if (prev === 0) {
-      // Initial load or resume: start at the latest message.
+    const el = panelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visibleRef.current = entry.intersectionRatio >= VISIBLE_RATIO;
+        clearUnreadIfReading();
+      },
+      { threshold: [0, 0.3, VISIBLE_RATIO, 1] },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!initializedRef.current) {
+      // First render or resume: start at the latest message, nothing is unread.
+      initializedRef.current = true;
+      lastSeenIdRef.current = lastId;
       scrollToBottom(false);
       return;
     }
-    const added = messages.length - prev;
-    if (added <= 0) return;
-    const last = messages[messages.length - 1];
-    if (atBottomRef.current || last.playerId === myPlayerId) {
+    if (lastId === lastSeenIdRef.current) return;
+
+    const prevId = lastSeenIdRef.current;
+    lastSeenIdRef.current = lastId;
+    const prevIdx = prevId ? messages.findIndex((m) => m.id === prevId) : -1;
+    const fresh = messages.slice(prevIdx + 1);
+    if (fresh.length === 0) return;
+
+    const sentByMe = fresh[fresh.length - 1].playerId === myPlayerId;
+    const fromOthers = fresh.filter((m) => m.playerId !== myPlayerId).length;
+
+    if (sentByMe) {
       atBottomRef.current = true;
       setUnread(0);
       scrollToBottom(true);
+    } else if (atBottomRef.current) {
+      // Keep following. If the panel is off screen the messages are still unseen.
+      scrollToBottom(visibleRef.current);
+      if (!visibleRef.current) setUnread((n) => n + fromOthers);
     } else {
-      setUnread((n) => n + added);
+      setUnread((n) => n + fromOthers);
     }
-  }, [messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lastId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Desktop pill: jump the chat list to the newest message. */
   function jumpToLatest() {
     atBottomRef.current = true;
     setUnread(0);
     scrollToBottom(true);
   }
+
+  /** Mobile floating button: bring the chat panel on screen, then to the newest message. */
+  function goToChat() {
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    atBottomRef.current = true;
+    setUnread(0);
+    scrollToBottom(false);
+  }
+
+  const unreadLabel = unread > 99 ? '99+' : String(unread);
 
   const mentionQuery = useMemo(() => {
     const cursor = inputRef.current?.selectionStart ?? text.length;
@@ -171,7 +226,7 @@ export default function ChatPanel({
   }
 
   return (
-    <div style={styles.panel}>
+    <div ref={panelRef} style={styles.panel}>
       <div style={styles.header}>Room chat</div>
       <div ref={listRef} style={styles.messages} onScroll={handleListScroll}>
         {messages.length === 0 && (
@@ -191,10 +246,23 @@ export default function ChatPanel({
         ))}
       </div>
 
-      {unread > 0 && (
+      {unread > 0 && !isMobile && (
         <button type="button" style={styles.newMsgPill} onClick={jumpToLatest}>
-          {unread === 1 ? 'New message' : `${unread} new messages`} ↓
+          {unread === 1 ? 'New message' : `${unreadLabel} new messages`} ↓
         </button>
+      )}
+
+      {unread > 0 && isMobile && createPortal(
+        <button
+          type="button"
+          style={styles.chatFab}
+          onClick={goToChat}
+          aria-label={`${unreadLabel} unread chat messages. Go to chat`}
+        >
+          <span style={styles.chatFabIcon} aria-hidden="true">💬</span>
+          <span style={styles.chatFabBadge}>{unreadLabel}</span>
+        </button>,
+        document.body,
       )}
 
       {emojiOpen && (
@@ -341,16 +409,53 @@ const styles: Record<string, React.CSSProperties> = {
     left: '50%',
     transform: 'translateX(-50%)',
     bottom: 56,
-    padding: '5px 12px',
+    padding: '6px 14px',
     borderRadius: 999,
-    border: '1px solid rgba(116,198,157,0.5)',
-    background: '#1b4332',
-    color: '#d8f3dc',
+    border: '1px solid rgba(255,255,255,0.35)',
+    background: '#2d6a4f',
+    color: '#fff',
     fontSize: 12,
     fontWeight: 600,
     cursor: 'pointer',
     zIndex: 4,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+    whiteSpace: 'nowrap',
+    boxShadow: '0 3px 10px rgba(0,0,0,0.55)',
+  },
+  chatFab: {
+    position: 'fixed',
+    right: 16,
+    bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+    width: 52,
+    height: 52,
+    borderRadius: '50%',
+    border: '1px solid rgba(255,255,255,0.4)',
+    background: '#2d6a4f',
+    color: '#fff',
+    cursor: 'pointer',
+    zIndex: 60,
+    padding: 0,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.55)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatFabIcon: { fontSize: 24, lineHeight: 1 },
+  chatFabBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    minWidth: 20,
+    height: 20,
+    padding: '0 5px',
+    boxSizing: 'border-box',
+    borderRadius: 10,
+    background: '#e74c3c',
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   form: { display: 'flex', gap: 4, padding: 8, borderTop: '1px solid rgba(255,255,255,0.08)', alignItems: 'center' },
   iconBtn: {
