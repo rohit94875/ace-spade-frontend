@@ -33,6 +33,7 @@ export interface SeasonRewardWinner {
   userId: number;
   username: string;
   statValue?: number | null;
+  gameMode?: string;
 }
 
 export interface SeasonDetail extends SeasonSummary {
@@ -43,6 +44,7 @@ export interface SeasonDetail extends SeasonSummary {
 export interface SeasonReward {
   symbolType: RewardSymbolType;
   statValue?: number | null;
+  gameMode?: string;
 }
 
 export interface SeasonRewardsGroup {
@@ -80,7 +82,7 @@ const TIER_CARDS: RewardSymbolType[] = [
 
 const AWARD_BADGES: RewardSymbolType[] = [
   'TOP_MMR', 'MOST_MATCHES', 'MOST_WINS', 'MOST_LOSSES',
-  'WIN_STREAK', 'LOSS_STREAK', 'BID_MASTER', 'FINISHER',
+  'WIN_STREAK', 'LOSS_STREAK', 'BID_MASTER',
 ];
 
 export function isTierCard(symbol: RewardSymbolType): boolean {

@@ -169,6 +169,13 @@ export function sendTeam(roomCode: string, team: 1 | 2) {
   });
 }
 
+export function sendPokerAction(roomCode: string, action: string) {
+  stompClient?.publish({
+    destination: `/app/game/${roomCode}/poker`,
+    body: JSON.stringify({ action }),
+  });
+}
+
 export function sendBid(roomCode: string, amount: number) {
   stompClient?.publish({
     destination: `/app/game/${roomCode}/bid`,

@@ -12,7 +12,7 @@ interface AuthStore {
   initialized: boolean;
   init: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, username: string) => Promise<void>;
+  register: (email: string, password: string, username: string, adminCode: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
@@ -64,6 +64,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }
     }
     set({ initialized: true });
+    // Pull fresh profile (modeRatings / rank) even when the access token is still valid.
+    try {
+      const profile = await authApi.getMe(stored.accessToken);
+      set({ user: profile });
+      saveAuth({ ...stored, user: profile });
+    } catch {
+      /* keep cached user */
+    }
   },
 
   login: async (email, password) => {
@@ -82,8 +90,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     });
   },
 
-  register: async (email, password, username) => {
-    const res = await authApi.register(email, password, username);
+  register: async (email, password, username, adminCode) => {
+    const res = await authApi.register(email, password, username, adminCode);
     const stored: StoredAuth = {
       accessToken: res.accessToken,
       refreshToken: res.refreshToken,

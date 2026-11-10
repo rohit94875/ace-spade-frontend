@@ -13,6 +13,7 @@ import {
 import TierBadge from './TierBadge';
 
 const MAX_PLAYERS = 8;
+const POKER_MAX_PLAYERS = 6;
 
 function roundOptionLabel(n: number): string {
   if (n === RANKED_MIN_ROUNDS) return `${n} rounds (quick)`;
@@ -111,13 +112,18 @@ export default function LobbyPanel({
 }: LobbyPanelProps) {
   const seatCount = players.length;
   const myTeam = players.find((p) => p.id === playerId)?.teamId;
-  const emptySeats = Math.max(0, MAX_PLAYERS - seatCount);
+  const isPoker = gameMode === 'POKER';
+  const tableCap = isPoker ? POKER_MAX_PLAYERS : MAX_PLAYERS;
+  const emptySeats = Math.max(0, tableCap - seatCount);
   const waitingPlayers = players.filter((p) => !p.bot && !p.ready);
   const hostUsername = players.find((p) => p.id === hostPlayerId)?.username ?? 'host';
 
   const statusLine = (() => {
     if (isClanBattle && seatCount < 4) {
-      return `Clan Battle needs 4+ players (${seatCount}/${MAX_PLAYERS} joined)`;
+      return `Clan Battle needs 4+ players (${seatCount}/${tableCap} joined)`;
+    }
+    if (isPoker && seatCount < 2) {
+      return `Poker needs at least 2 players (${seatCount}/${tableCap})`;
     }
     if (seatCount < 2 && !playWithBot) {
       return 'Need at least 2 players — share the code below';
@@ -127,7 +133,9 @@ export default function LobbyPanel({
       return `Waiting for ${names} to ready up`;
     }
     if (amHost && canStart) {
-      return 'Everyone is ready — you can start the game';
+      return isPoker
+        ? 'Everyone is ready — start Poker (SB 25 / BB 50, play until bust)'
+        : 'Everyone is ready — you can start the game';
     }
     if (!amHost && allHumansReady) {
       return `Waiting for ${hostUsername} to start…`;
@@ -140,8 +148,8 @@ export default function LobbyPanel({
 
   const modeBadge = [
     gameModeLabel(gameMode),
-    ranked ? 'Ranked' : isClanBattle ? 'Unranked' : 'Casual',
-    `${maxRounds}r`,
+    ranked ? 'Ranked' : (isClanBattle || isPoker) ? 'Unranked' : 'Casual',
+    isPoker ? 'until bust' : `${maxRounds}r`,
   ].join(' · ');
 
   const hostCanPickRounds = allowsLobbyRoundPicker(ranked, gameMode);
